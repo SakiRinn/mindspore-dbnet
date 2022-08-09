@@ -8,7 +8,7 @@ from mindspore import context
 import mindspore.nn as nn
 from mindspore.common.initializer import Normal
 from mindspore import load_checkpoint, load_param_into_net
-
+from mindspore.common.initializer import HeNormal
 import numpy as np
 import math
 
@@ -17,7 +17,7 @@ import math
 def conv3x3(inplanes, outplanes, stride=1):
     """3x3 convolution with padding"""
     return nn.Conv2d(inplanes, outplanes, kernel_size=3, stride=stride, pad_mode="pad",
-                     padding=1, weight_init="ones")
+                     padding=1, weight_init=HeNormal())
 
 
 class BasicBlock(nn.Cell):
@@ -91,7 +91,7 @@ class Bottleneck(nn.Cell):
         self.with_dcn = dcn is not None
 
         # self.conv1 = nn.Conv2d(inplanes, planes, kernel_size=1, bias=False)
-        self.conv1 = nn.Conv2d(inplanes, planes, kernel_size=1, stride=stride, has_bias=False, weight_init="ones")
+        self.conv1 = nn.Conv2d(inplanes, planes, kernel_size=1, stride=stride, has_bias=False, weight_init=HeNormal())
 
         # self.bn1 = BatchNorm2d(planes)
         self.bn1 = nn.BatchNorm2d(planes, use_batch_statistics=None, momentum=0.1)
@@ -104,11 +104,11 @@ class Bottleneck(nn.Cell):
         else:
             # self.conv2 = nn.Conv2d(planes, planes, kernel_size=3, stride=stride, padding=1, bias=False)
             self.conv2 = nn.Conv2d(planes, planes, kernel_size=3, has_bias=False, pad_mode="pad",
-                                   padding=1, weight_init="ones")
+                                   padding=1, weight_init=HeNormal())
 
         self.bn2 = nn.BatchNorm2d(planes, use_batch_statistics=None, momentum=0.1)
         # self.conv3 = nn.Conv2d(planes, planes * 4, kernel_size=1, bias=False)
-        self.conv3 = nn.Conv2d(planes, planes * 4, kernel_size=1, has_bias=False, weight_init="ones")
+        self.conv3 = nn.Conv2d(planes, planes * 4, kernel_size=1, has_bias=False, weight_init=HeNormal())
 
         # self.bn3 = BatchNorm2d(planes * 4)
         self.bn3 = nn.BatchNorm2d(planes * 4, use_batch_statistics=None, momentum=0.1)
@@ -154,7 +154,7 @@ class ResNet(nn.Cell):
 
         # TODO: set initializer to constant for debugging.
         self.conv1 = nn.Conv2d(3, 64, kernel_size=7, stride=2, padding=3, pad_mode="pad",
-                               has_bias=False, weight_init="ones")  # same卷积，图片尺寸不变
+                               has_bias=False, weight_init=HeNormal())  # same卷积，图片尺寸不变
 
         self.bn1 = nn.BatchNorm2d(64, use_batch_statistics=None, momentum=0.1)
         self.relu = nn.ReLU()
@@ -171,7 +171,7 @@ class ResNet(nn.Cell):
             block, 512, layers[3], stride=2, dcn=dcn)
 
         self.avgpool = nn.AvgPool2d(7, stride=1)
-        self.fc = nn.Dense(512 * block.expansion, num_classes)
+        # self.fc = nn.Dense(512 * block.expansion, num_classes)
 
         for m in self.cells():
 
@@ -188,7 +188,7 @@ class ResNet(nn.Cell):
             downsample = nn.SequentialCell(
                 # set initializer to constant for debugging.
                 nn.Conv2d(self.inplanes, planes * block.expansion, pad_mode="pad",
-                          kernel_size=1, stride=stride, has_bias=False, weight_init="ones"),
+                          kernel_size=1, stride=stride, has_bias=False, weight_init=HeNormal()),
                 nn.BatchNorm2d(planes * block.expansion, use_batch_statistics=None, momentum=0.1),
             )
 

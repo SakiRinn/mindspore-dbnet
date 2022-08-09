@@ -2,63 +2,65 @@ import cv2
 import numpy as np
 import imgaug.augmenters as aug_img
 import imgaug
-import random
 
 
 def solve_polys(polys):
-    len_max = 0
+    max_points = 0
     for poly in polys:
-        if (len(poly) // 2 > len_max):
-            len_max = len(poly) // 2
+        if (len(poly) // 2 > max_points):
+            max_points = len(poly) // 2
     new_polys = []
     for poly in polys:
         new_poly = []
-        if (len(poly) // 2 < len_max):
+        if (len(poly) // 2 < max_points):
             new_poly.extend(poly)
-            for i in range(len(poly) // 2, len_max):
+            for i in range(len(poly) // 2, max_points):
                 new_poly.extend([poly[0], poly[1]])
         else:
             new_poly = poly
         new_polys.append(new_poly)
-    return np.array(new_polys), len_max
+    return np.array(new_polys), max_points
 
 
 class RandomCropData():
-    def __init__(self, max_tries=10, min_crop_side_ratio=0.1, crop_size=(640, 640)):
+    def __init__(self, max_tries=100, min_crop_side_ratio=0.1, crop_size=(640, 640)):
         self.size = crop_size
         self.min_crop_side_ratio = min_crop_side_ratio
         self.max_tries = max_tries
 
-    def process(self, img, polys, dont_care):
-        all_care_polys = []
-        for i in range(len(dont_care)):
-            if (dont_care[i] is False):
-                all_care_polys.append(polys[i])
+    def process(self, img, polys, dontcare):
+        # Eliminate dontcare polys.
+        all_care_polys = [polys[i] for i in range(len(dontcare)) if dontcare[i] == False]
+        # Crop a rectangle randomly.
         crop_x, crop_y, crop_w, crop_h = self.crop_area(img, all_care_polys)
+        # Rescale the cropped rectangle to crop_size.
         scale_w = self.size[0] / crop_w
         scale_h = self.size[1] / crop_h
         scale = min(scale_w, scale_h)
         h = int(crop_h * scale)
         w = int(crop_w * scale)
-        padimg = np.zeros(
-            (self.size[1], self.size[0], img.shape[2]), img.dtype)
-        padimg[:h, :w] = cv2.resize(
-            img[crop_y:crop_y + crop_h, crop_x:crop_x + crop_w], (w, h))
+        # Pad the rest of crop_size with 0.
+        padimg = np.zeros((self.size[1], self.size[0], img.shape[2]), img.dtype)
+        padimg[:h, :w] = cv2.resize(img[crop_y:crop_y + crop_h, crop_x:crop_x + crop_w], (w, h))
         img = padimg
 
         new_polys = []
-        new_dotcare = []
+        new_dontcare = []
         for i in range(len(polys)):
+            # Rescale all original polys.
             poly = polys[i]
-            poly = ((np.array(poly) -
-                     (crop_x, crop_y)) * scale)
+            poly = ((np.array(poly) - (crop_x, crop_y)) * scale)
+            # Filter out the polys in the cropped rectangle.
             if not self.is_poly_outside_rect(poly, 0, 0, w, h):
                 new_polys.append(poly)
-                new_dotcare.append(dont_care[i])
+                new_dontcare.append(dontcare[i])
 
-        return img, new_polys, new_dotcare
+        return img, new_polys, new_dontcare
 
     def is_poly_in_rect(self, poly, x, y, w, h):
+        '''
+        Whether the poly is inside a rectangle.
+        '''
         poly = np.array(poly)
         if poly[:, 0].min() < x or poly[:, 0].max() > x + w:
             return False
@@ -67,6 +69,9 @@ class RandomCropData():
         return True
 
     def is_poly_outside_rect(self, poly, x, y, w, h):
+        '''
+        Whether the poly isn't inside a rectangle.
+        '''
         poly = np.array(poly)
         if poly[:, 0].max() < x or poly[:, 0].min() > x + w:
             return True
@@ -75,9 +80,13 @@ class RandomCropData():
         return False
 
     def split_regions(self, axis):
+        '''
+        Splitting out the continuous area in the axis.
+        '''
         regions = []
         min_axis = 0
-        for i in range(1, axis.shape[0]):
+        for i in range(1, len(axis)):
+            # If continuous
             if axis[i] != axis[i - 1] + 1:
                 region = axis[min_axis:i]
                 min_axis = i
@@ -85,37 +94,51 @@ class RandomCropData():
         return regions
 
     def random_select(self, axis, max_size):
+        '''
+        Randomly select two values in a single region.
+        '''
         xx = np.random.choice(axis, size=2)
-        xmin = np.min(xx)
-        xmax = np.max(xx)
-        xmin = np.clip(xmin, 0, max_size - 1)
-        xmax = np.clip(xmax, 0, max_size - 1)
+        xmin = np.clip(np.min(xx), 0, max_size - 1)
+        xmax = np.clip(np.max(xx), 0, max_size - 1)
         return xmin, xmax
 
     def region_wise_random_select(self, regions, max_size):
+        '''
+        Two regions are randomly selected from regions and then one value is taken from each.
+        Return the two values taken.
+        '''
         selected_index = list(np.random.choice(len(regions), 2))
         selected_values = []
         for index in selected_index:
             axis = regions[index]
             xx = int(np.random.choice(axis, size=1))
             selected_values.append(xx)
-        xmin = min(selected_values)
-        xmax = max(selected_values)
+
+        xmin = np.clip(min(selected_values), 0, max_size - 1)
+        xmax = np.clip(max(selected_values), 0, max_size - 1)
         return xmin, xmax
 
     def crop_area(self, img, polys):
+        '''
+        Randomly select a rectangle containing polys from the img.
+        Return the start point and side lengths of the selected rectangle.
+        '''
         h, w, _ = img.shape
         h_array = np.zeros(h, dtype=np.int32)
         w_array = np.zeros(w, dtype=np.int32)
+
         for points in polys:
+            # Convert points from float to int.
             points = np.round(points, decimals=0).astype(np.int32)
+            # interval of x
             minx = np.min(points[:, 0])
             maxx = np.max(points[:, 0])
             w_array[minx:maxx] = 1
+            # interval of y
             miny = np.min(points[:, 1])
             maxy = np.max(points[:, 1])
             h_array[miny:maxy] = 1
-        # ensure the cropped area not across a text
+        # Get the idx that include text.
         h_axis = np.where(h_array == 0)[0]
         w_axis = np.where(w_array == 0)[0]
 
@@ -126,6 +149,7 @@ class RandomCropData():
         w_regions = self.split_regions(w_axis)
 
         for i in range(self.max_tries):
+            # Randomly select two contained idx in the axis to form a new rectangle.
             if len(w_regions) > 1:
                 xmin, xmax = self.region_wise_random_select(w_regions, w)
             else:
@@ -134,10 +158,10 @@ class RandomCropData():
                 ymin, ymax = self.region_wise_random_select(h_regions, h)
             else:
                 ymin, ymax = self.random_select(h_axis, h)
-
+            # If too small, reselect.
             if xmax - xmin < self.min_crop_side_ratio * w or ymax - ymin < self.min_crop_side_ratio * h:
-                # area too small
                 continue
+            # If there is a poly inside the rectangle, successful.
             num_poly_in_rect = 0
             for poly in polys:
                 if not self.is_poly_outside_rect(poly, xmin, ymin, xmax - xmin, ymax - ymin):
@@ -147,6 +171,7 @@ class RandomCropData():
             if num_poly_in_rect > 0:
                 return xmin, ymin, xmax - xmin, ymax - ymin
 
+        # If the num of attempts exceeds 'max_tries', return the whole img.
         return 0, 0, w, h
 
 
@@ -157,7 +182,8 @@ class RandomAugment():
 
     def augment_poly(self, aug, img_shape, poly):
         keypoints = [imgaug.Keypoint(p[0], p[1]) for p in poly]
-        keypoints = aug.augment_keypoints([imgaug.KeypointsOnImage(keypoints, shape=img_shape[:2])])[0].keypoints
+        keypoints = aug.augment_keypoints([imgaug.KeypointsOnImage(keypoints, shape=img_shape[:2])])
+        keypoints = keypoints[0].keypoints
         poly = [(p.x, p.y) for p in keypoints]
         return np.array(poly)
 
@@ -173,25 +199,35 @@ class RandomAugment():
         return img, new_polys
 
     def random_scale(self, img, polys, min_size):
-        polys, len_max = solve_polys(polys)
+        polys, max_points = solve_polys(polys)
         h, w = img.shape[0:2]
-        new_polys = []
+
+        # polys -> polys' scale w.r.t original.
+        polys_scale = []
         for poly in polys:
             poly = np.asarray(poly)
-            poly = poly / ([w * 1.0, h * 1.0] * len_max)
-            new_polys.append(poly)
-        new_polys = np.array(new_polys)
+            poly = poly / ([w * 1.0, h * 1.0] * max_points)
+            polys_scale.append(poly)
+        polys_scale = np.array(polys_scale)
+
+        # Resize to 1280 pixs max-length.
         if max(h, w) > 1280:
             scale = 1280.0 / max(h, w)
             img = cv2.resize(img, dsize=None, fx=scale, fy=scale)
         h, w = img.shape[0:2]
+
+        # Get scale (randomly or not).
         random_scale = np.array([0.5, 1.0, 2.0, 3.0])
         scale = np.random.choice(random_scale)
+        # If less than min_size, scale will be clipped to min_scale.
         if min(h, w) * scale <= min_size:
             scale = (min_size + 10) * 1.0 / min(h, w)
+        # Rescale img
         img = cv2.resize(img, dsize=None, fx=scale, fy=scale)
-        new_polys = np.reshape(new_polys * ([img.shape[1], img.shape[0]] * len_max),
-                               (new_polys.shape[0], polys.shape[1] // 2, 2))
+        # Rescale polys: (N, 8) -> (N, 4, 2)
+        new_polys = (polys_scale * ([img.shape[1], img.shape[0]] * max_points)) \
+                    .reshape((polys.shape[0], polys.shape[1] // 2, 2))
+
         return img, new_polys
 
     def random_flip(self, img, polys):
@@ -207,44 +243,6 @@ class RandomAugment():
             new_polys = polys
         return img, new_polys
 
-    def random_crop_db(self, img, polys, dont_care):
-        img, new_polys, new_dotcare = self.random_crop_data.process(img, polys, dont_care)
-        return img, new_polys, new_dotcare
-
-    def random_crop_pse(self, imgs, img_size=(640, 640)):
-        h, w = imgs[0].shape[0:2]
-        th, tw = img_size
-        if w == tw and h == th:
-            return imgs
-
-        if random.random() > 3.0 / 8.0 and np.max(imgs[1]) > 0:
-            tl = np.min(np.where(imgs[1] > 0), axis=1) - img_size
-            tl[tl < 0] = 0
-            br = np.max(np.where(imgs[1] > 0), axis=1) - img_size
-            br[br < 0] = 0
-            br[0] = min(br[0], h - th)
-            br[1] = min(br[1], w - tw)
-
-            i = random.randint(tl[0], br[0])
-            j = random.randint(tl[1], br[1])
-        else:
-            i = random.randint(0, h - th)
-            j = random.randint(0, w - tw)
-
-        # return i, j, th, tw
-        for idx in range(len(imgs)):
-            if len(imgs[idx].shape) == 3:
-                imgs[idx] = imgs[idx][i:i + th, j:j + tw, :]
-            else:
-                imgs[idx] = imgs[idx][i:i + th, j:j + tw]
-        return imgs
-
-    def rescale(self, img, polys, shape:tuple=(640, 640)):
-        new_img = cv2.resize(img, dsize=shape)
-        new_img = np.array(new_img)
-
-        polys = polys.reshape(polys.shape[0], polys.shape[1] // 2, 2)
-        new_polys = np.split(polys, polys.shape[0], 0)
-        new_polys = [new_polys[i].squeeze() // np.array([img.shape[0] / shape[0], img.shape[1] / shape[1]])
-                     for i in range(len(new_polys))]
-        return new_img, new_polys
+    def random_crop(self, img, polys, dontcare):
+        img, new_polys, new_dontcare = self.random_crop_data.process(img, polys, dontcare)
+        return img, new_polys, new_dontcare

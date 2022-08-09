@@ -1,5 +1,8 @@
+import os
 import time
+import numpy as np
 import yaml
+import cv2
 from tqdm.auto import tqdm
 
 import mindspore
@@ -16,29 +19,26 @@ from modules.model import DBnet, DBnetPP
 
 
 class WithEvalCell(nn.Cell):
-    def __init__(self, model, dataset):
+    def __init__(self, model):
         super(WithEvalCell, self).__init__(auto_prefix=False)
         self.model = model
-        self.dataset = dataset
         self.metric = QuadMetric()
         self.post_process = SegDetectorRepresenter()
+        self.count = 0
 
-    def construct(self, batch, verbose=True):
+    def construct(self, batch):
         start = time.time()
 
         preds = self.model(batch['img'])
-        boxes, scores = self.post_process(preds, False)
+        boxes, scores = self.post_process(preds)
         raw_metric = self.metric.validate_measure(batch, (boxes, scores))
 
         cur_frame = batch['img'].shape[0]
         cur_time = time.time() - start
 
-        if verbose:
-            return raw_metric, (cur_frame, cur_time)
-        else:
-            return raw_metric
+        return raw_metric, (cur_frame, cur_time)
 
-    def eval(self, dataset):
+    def eval(self, dataset, show_imgs=True):
         total_frame = 0.0
         total_time = 0.0
         raw_metrics = []
@@ -46,10 +46,34 @@ class WithEvalCell(nn.Cell):
         for batch in tqdm(dataset):
             raw_metric, (cur_frame, cur_time) = self(batch)
             raw_metrics.append(raw_metric)
+
+            print('\n', raw_metric['evaluationLog'], end='')
+            print(raw_metric['recall'], raw_metric['precision'])
             total_frame += cur_frame
             total_time += cur_time
-        metrics = self.metric.gather_measure(raw_metrics)
 
+            self.count += 1
+            if show_imgs:
+                img = batch['original_img'].asnumpy().squeeze().astype('uint8')
+                # gt
+                for idx, poly in enumerate(raw_metric['gtPolys']):
+                    poly = np.expand_dims(poly, -2).astype(np.int32)
+                    if idx in raw_metric['gtDontCare']:
+                        cv2.polylines(img, [poly], True, (255, 160, 160), 4)
+                    else:
+                        cv2.polylines(img, [poly], True, (255, 0, 0), 4)
+                # pred
+                for idx, poly in enumerate(raw_metric['detPolys']):
+                    poly = np.expand_dims(poly, -2).astype(np.int32)
+                    if idx in raw_metric['detDontCare']:
+                        cv2.polylines(img, [poly], True, (200, 255, 200), 4)
+                    else:
+                        cv2.polylines(img, [poly], True, (0, 255, 0), 4)
+                if not os.path.exists('images'):
+                    os.makedirs('images')
+                cv2.imwrite(f'images/eval_{self.count}.jpg', img)
+
+        metrics = self.metric.gather_measure(raw_metrics)
         print(f'FPS: {total_frame / total_time}')
         print(metrics['recall'].avg, metrics['precision'].avg, metrics['fmeasure'].avg)
 
@@ -61,7 +85,7 @@ def eval(model: nn.Cell, path: str):
 
     ## Dataset
     data_loader = DataLoader(config, isTrain=False)
-    val_dataset = ds.GeneratorDataset(data_loader, ['img', 'polys', 'dontcare'])
+    val_dataset = ds.GeneratorDataset(data_loader, ['original_img', 'img', 'polys', 'dontcare'])
     val_dataset = val_dataset.batch(1)
     dataset = val_dataset.create_dict_iterator()
 
@@ -70,11 +94,11 @@ def eval(model: nn.Cell, path: str):
     mindspore.load_param_into_net(model, model_dict)
 
     ## Eval
-    eval_net = WithEvalCell(model, val_dataset)
+    eval_net = WithEvalCell(model)
     eval_net.set_train(False)
     eval_net.eval(dataset)
 
 
 if __name__ == '__main__':
     context.set_context(mode=context.PYNATIVE_MODE, device_target="Ascend", device_id=6)
-    eval(DBnet(isTrain=False), './checkpoints/DBnet/DBnet-19_63.ckpt')
+    eval(DBnet(isTrain=False), 'checkpoints/pthTOckpt/LiaoTOckpt.ckpt')

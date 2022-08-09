@@ -29,157 +29,151 @@ class DetectionIoUEvaluator:
         self.area_precision_constraint = area_precision_constraint
 
     def evaluate_image(self, gt, pred):
-
+        ## init
         def get_union(pD, pG):
             return Polygon(pD).union(Polygon(pG)).area
-
-        def get_intersection_over_union(pD, pG):
-            return get_intersection(pD, pG) / get_union(pD, pG)
 
         def get_intersection(pD, pG):
             return Polygon(pD).intersection(Polygon(pG)).area
 
-        perSampleMetrics = {}
+        def get_intersection_over_union(pD, pG):
+            return get_intersection(pD, pG) / get_union(pD, pG)
 
-        matchedSum = 0
-
-        numGlobalCareGt = 0
-        numGlobalCareDet = 0
-
+        # metrics
         recall = 0
         precision = 0
         hmean = 0
 
-        detMatched = 0
-
+        # num of 'pred' & 'gt' matching
+        detMatch = 0
+        pairs = []
         iouMat = np.empty([1, 1])
 
-        gtPols = []
-        detPols = []
+        # num of cared polys
+        num_gtCare = 0
+        num_detCare = 0
 
-        gtPolPoints = []
-        detPolPoints = []
+        # list of polys
+        gtPolys = []
+        detPolys = []
 
-        # Array of Ground Truth Polygons' keys marked as don't Care
-        gtDontCarePolsNum = []
-        # Array of Detected Polygons' matched with a don't Care GT
-        detDontCarePolsNum = []
+        # idx of dontcare polys
+        gtPolys_dontcare = []
+        detPolys_dontcare = []
 
-        pairs = []
-        detMatchedNums = []
-
+        # log string
         evaluationLog = ""
 
-        for n in range(len(gt)):
-            points = gt[n]['points']
-            # transcription = gt[n]['text']
-
-            if not Polygon(points).is_valid or not Polygon(points).is_simple:
+        ## gt
+        for i in range(len(gt)):
+            poly = gt[i]['polys']
+            dontcare = gt[i]['dontcare']
+            if not Polygon(poly).is_valid or not Polygon(poly).is_simple:
                 continue
+            gtPolys.append(poly)
+            if dontcare:
+                gtPolys_dontcare.append(len(gtPolys) - 1)
 
-            gtPol = points
-            gtPols.append(gtPol)
-            gtPolPoints.append(points)
+        evaluationLog += f"GT polygons: {str(len(gtPolys))}" + \
+        (f" ({len(gtPolys_dontcare)} don't care)\n" if len(gtPolys_dontcare) > 0 else "\n")
 
-        evaluationLog += "GT polygons: " + str(len(gtPols)) + (" (" + str(len(
-            gtDontCarePolsNum)) + " don't care)\n" if len(gtDontCarePolsNum) > 0 else "\n")
-
-        for n in range(len(pred)):
-            points = pred[n]['points']
-            if not Polygon(points).is_valid or not Polygon(points).is_simple:
+        ## pred
+        for i in range(len(pred)):
+            poly = pred[i]
+            if not Polygon(poly).is_valid or not Polygon(poly).is_simple:
                 continue
+            detPolys.append(poly)
 
-            detPol = points
-            detPols.append(detPol)
-            detPolPoints.append(points)
-            if len(gtDontCarePolsNum) > 0:
-                for dontCarePol in gtDontCarePolsNum:
-                    dontCarePol = gtPols[dontCarePol]
-                    intersected_area = get_intersection(dontCarePol, detPol)
-                    pdDimensions = Polygon(detPol).area
-                    precision = 0 if pdDimensions == 0 else intersected_area / pdDimensions
+            # For dontcare gt
+            if len(gtPolys_dontcare) > 0:
+                for idx in gtPolys_dontcare:
+                    dontcare_poly = gtPolys[idx]
+                    intersected_area = get_intersection(dontcare_poly, poly)
+                    poly_area = Polygon(poly).area
+                    precision = 0 if poly_area == 0 else intersected_area / poly_area
+                    # If precision enough, append as dontcare det.
                     if (precision > self.area_precision_constraint):
-                        detDontCarePolsNum.append(len(detPols) - 1)
+                        detPolys_dontcare.append(len(detPolys) - 1)
                         break
 
-        evaluationLog += "DET polygons: " + str(len(detPols)) + (" (" + str(len(
-            detDontCarePolsNum)) + " don't care)\n" if len(detDontCarePolsNum) > 0 else "\n")
+        evaluationLog += f"DET polygons: {len(detPolys)}" + \
+        (f" ({len(detPolys_dontcare)} don't care)\n" if len(detPolys_dontcare) > 0 else "\n")
 
-        if len(gtPols) > 0 and len(detPols) > 0:
-            # Calculate IoU and precision matrixs
-            outputShape = [len(gtPols), len(detPols)]
-            iouMat = np.empty(outputShape)
-            gtRectMat = np.zeros(len(gtPols), np.int8)
-            detRectMat = np.zeros(len(detPols), np.int8)
+        ## calc
+        if len(gtPolys) > 0 and len(detPolys) > 0:
+            # visit arrays
+            iouMat = np.empty([len(gtPolys), len(detPolys)])
+            gtRectMat = np.zeros(len(gtPolys), np.int8)
+            detRectMat = np.zeros(len(detPolys), np.int8)
+
+            # IoU
             if self.is_output_polygon:
-                for gtNum in range(len(gtPols)):
-                    for detNum in range(len(detPols)):
-                        pG = gtPols[gtNum]
-                        pD = detPols[detNum]
-                        iouMat[gtNum, detNum] = get_intersection_over_union(pD, pG)
+                # polygon
+                for gt_idx in range(len(gtPolys)):
+                    for det_idx in range(len(detPolys)):
+                        pG = gtPolys[gt_idx]
+                        pD = detPolys[det_idx]
+                        iouMat[gt_idx, det_idx] = get_intersection_over_union(pD, pG)
             else:
-                # gtPols = np.float32(gtPols)
-                # detPols = np.float32(detPols)
-                for gtNum in range(len(gtPols)):
-                    for detNum in range(len(detPols)):
-                        pG = np.float32(gtPols[gtNum])
-                        pD = np.float32(detPols[detNum])
-                        iouMat[gtNum, detNum] = self.iou_rotate(pD, pG)
-            for gtNum in range(len(gtPols)):
-                for detNum in range(len(detPols)):
-                    if gtRectMat[gtNum] == 0 and detRectMat[
-                        detNum] == 0 and gtNum not in gtDontCarePolsNum and detNum not in detDontCarePolsNum:
-                        if iouMat[gtNum, detNum] > self.iou_constraint:
-                            gtRectMat[gtNum] = 1
-                            detRectMat[detNum] = 1
-                            detMatched += 1
-                            pairs.append({'gt': gtNum, 'det': detNum})
-                            detMatchedNums.append(detNum)
-                            evaluationLog += "Match GT #" + \
-                                             str(gtNum) + " with Det #" + str(detNum) + "\n"
+                # rectangle
+                for gt_idx in range(len(gtPolys)):
+                    for det_idx in range(len(detPolys)):
+                        pG = np.float32(gtPolys[gt_idx])
+                        pD = np.float32(detPolys[det_idx])
+                        iouMat[gt_idx, det_idx] = self.iou_rotate(pD, pG)
 
-        numGtCare = (len(gtPols) - len(gtDontCarePolsNum))
-        numDetCare = (len(detPols) - len(detDontCarePolsNum))
-        if numGtCare == 0:
-            recall = float(1)
-            precision = float(0) if numDetCare > 0 else float(1)
+            for gt_idx in range(len(gtPolys)):
+                for det_idx in range(len(detPolys)):
+                    # If IoU == 0 and care
+                    if gtRectMat[gt_idx] == 0 and detRectMat[det_idx] == 0 \
+                    and (gt_idx not in gtPolys_dontcare) and (det_idx not in detPolys_dontcare):
+                        # If IoU enough
+                        if iouMat[gt_idx, det_idx] > self.iou_constraint:
+                            # Mark the visit arrays
+                            gtRectMat[gt_idx] = 1
+                            detRectMat[det_idx] = 1
+                            detMatch += 1
+                            pairs.append({'gt': gt_idx, 'det': det_idx})
+                            evaluationLog += f"Match GT #{gt_idx} with Det #{det_idx}\n"
+
+        ## summary
+        num_gtCare += (len(gtPolys) - len(gtPolys_dontcare))
+        num_detCare += (len(detPolys) - len(detPolys_dontcare))
+
+        if num_gtCare == 0:
+            recall = 1.0
+            precision = 0.0 if num_detCare > 0 else 1.0
         else:
-            recall = float(detMatched) / numGtCare
-            precision = 0 if numDetCare == 0 else float(
-                detMatched) / numDetCare
+            recall = float(detMatch) / num_gtCare
+            precision = 0 if num_detCare == 0 else float(
+                detMatch) / num_detCare
+        hmean = 0 if (precision + recall) == 0 else \
+                2.0 * precision * recall / (precision + recall)
 
-        hmean = 0 if (precision + recall) == 0 else 2.0 * \
-                                                    precision * recall / (precision + recall)
-
-        matchedSum += detMatched
-        numGlobalCareGt += numGtCare
-        numGlobalCareDet += numDetCare
-
-        perSampleMetrics = {
+        metric = {
             'precision': precision,
             'recall': recall,
             'hmean': hmean,
             'pairs': pairs,
-            'iouMat': [] if len(detPols) > 100 else iouMat.tolist(),
-            'gtPolPoints': gtPolPoints,
-            'detPolPoints': detPolPoints,
-            'gtCare': numGtCare,
-            'detCare': numDetCare,
-            'gtDontCare': gtDontCarePolsNum,
-            'detDontCare': detDontCarePolsNum,
-            'detMatched': detMatched,
+            'iouMat': [] if len(detPolys) > 100 else iouMat.tolist(),
+            'gtPolys': gtPolys,
+            'detPolys': detPolys,
+            'gtCareNum': num_gtCare,
+            'detCareNum': num_detCare,
+            'gtDontCare': gtPolys_dontcare,
+            'detDontCare': detPolys_dontcare,
+            'detMatched': detMatch,
             'evaluationLog': evaluationLog
         }
-
-        return perSampleMetrics
+        return metric
 
     def combine_results(self, results):
         numGlobalCareGt = 0
         numGlobalCareDet = 0
         matchedSum = 0
         for result in results:
-            numGlobalCareGt += result['gtCare']
-            numGlobalCareDet += result['detCare']
+            numGlobalCareGt += result['gtCareNum']
+            numGlobalCareDet += result['detCareNum']
             matchedSum += result['detMatched']
 
         methodRecall = 0 if numGlobalCareGt == 0 else float(
@@ -231,32 +225,31 @@ class QuadMetric:
             dontcare: tensor of shape (N, K), indicates whether a region is ignorable or not.
         output: (polygons, ...)
         '''
-        results = []
         gt_polys = batch['polys'].asnumpy().astype(np.float32)
+        gt_dontcare = batch['dontcare'].asnumpy()
         pred_polys = np.array(output[0])
         pred_scores = np.array(output[1])
-        for i in range(len(gt_polys)):
-            gt = [{'points': gt_polys[i][j]} for j in range(len(gt_polys[i]))]
-            if self.is_output_polygon:
-                pred = [{'points': pred_polys[i][j]} for j in range(len(pred_polys[i]))]
-            else:
-                pred = []
-                for j in range(pred_polys[i].shape[0]):
-                    if pred_scores[i][j] >= box_thresh:
-                        pred.append({'points': pred_polys[i][j, :, :].astype(np.int32)})
-            results.append(self.evaluator.evaluate_image(gt, pred))
-        return results
 
-    def validate_measure(self, batch, output, box_thresh=0.6):
-        return self.measure(batch, output, box_thresh)
+        # Loop i for every batch
+        for i in range(len(gt_polys)):
+            gt = [{'polys': gt_polys[i][j], 'dontcare': gt_dontcare[i][j]}
+                  for j in range(len(gt_polys[i]))]
+            if self.is_output_polygon:
+                pred = [pred_polys[i][j] for j in range(len(pred_polys[i]))]
+            else:
+                pred = [pred_polys[i][j, :, :].astype(np.int32)
+                        for j in range(pred_polys[i].shape[0]) if pred_scores[i][j] >= box_thresh]
+        return self.evaluator.evaluate_image(gt, pred)
+
+
+    def validate_measure(self, batch, output):
+        return self.measure(batch, output)
 
     def evaluate_measure(self, batch, output):
         return self.measure(batch, output), np.linspace(0, batch['image'].shape[0]).tolist()
 
     def gather_measure(self, raw_metrics):
-        raw_metrics = [image_metrics
-                       for batch_metrics in raw_metrics
-                       for image_metrics in batch_metrics]
+        raw_metrics = [image_metrics for image_metrics in raw_metrics]
 
         result = self.evaluator.combine_results(raw_metrics)
 

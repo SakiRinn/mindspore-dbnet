@@ -150,3 +150,5 @@ data/t*
 *.jpg
 test_np
 eval.py
+logs
+images

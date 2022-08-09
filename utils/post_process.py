@@ -3,6 +3,7 @@ import numpy as np
 from shapely.geometry import Polygon
 import pyclipper
 import mindspore.ops as ops
+from mindspore.common import dtype as mstype
 
 
 class SegDetectorRepresenter:
@@ -26,7 +27,7 @@ class SegDetectorRepresenter:
             thresh_binary: [if exists] binarized with threshhold, (N, H, W)
         '''
         pred = pred[dest][:, 0, :, :]
-        segmentation = self.binarize(pred)
+        segmentation = ops.cast(self.binarize(pred), mstype.float16)
         boxes_batch = []
         scores_batch = []
         for batch_index in range(pred.shape[0]):
@@ -99,36 +100,42 @@ class SegDetectorRepresenter:
         _bitmap: single map with shape (H, W),
             whose values are binarized as {0, 1}
         '''
-
         assert len(_bitmap.shape) == 2
-        bitmap = _bitmap.asnumpy()  # The first channel
-        pred = ops.stop_gradient(pred)
-        pred = pred.asnumpy()
+        bitmap = _bitmap.asnumpy()
+        pred = ops.stop_gradient(pred).asnumpy()
+
+        # Contour & Constraint
         height, width = bitmap.shape
         contours, _ = cv2.findContours((bitmap * 255).astype(np.uint8), cv2.RETR_LIST, cv2.CHAIN_APPROX_SIMPLE)
         num_contours = min(len(contours), self.max_candidates)
+
+        # Init
         boxes = np.zeros((num_contours, 4, 2), dtype=np.int16)
         scores = np.zeros((num_contours,), dtype=np.float32)
 
         for index in range(num_contours):
+            # (4, 1, 2) -> (4, 2)
             contour = contours[index].squeeze(1)
+            # Score
+            score = self.box_score_fast(pred, contour)
+            if self.box_thresh > score:
+                continue
+            # Box's points
             points, sside = self.get_mini_boxes(contour)
             if sside < self.min_size:
                 continue
             points = np.array(points)
-            score = self.box_score_fast(pred, contour)
-            if self.box_thresh > score:
-                continue
-
+            # Box
             box = self.unclip(points, unclip_ratio=self.unclip_ratio).reshape(-1, 1, 2)
             box, sside = self.get_mini_boxes(box)
             if sside < self.min_size + 2:
                 continue
             box = np.array(box)
+            # cast
             if not isinstance(dest_width, int):
                 dest_width = dest_width.item()
                 dest_height = dest_height.item()
-
+            # clip
             box[:, 0] = np.clip(np.round(box[:, 0] / width * dest_width), 0, dest_width)
             box[:, 1] = np.clip(np.round(box[:, 1] / height * dest_height), 0, dest_height)
             boxes[index, :, :] = box.astype(np.int16)
