@@ -22,7 +22,7 @@ def solve_polys(polys):
     return np.array(new_polys), max_points
 
 
-class RandomCropData():
+class RandomCropData:
     def __init__(self, max_tries=100, min_crop_side_ratio=0.1, crop_size=(640, 640)):
         self.size = crop_size
         self.min_crop_side_ratio = min_crop_side_ratio
@@ -175,7 +175,7 @@ class RandomCropData():
         return 0, 0, w, h
 
 
-class RandomAugment():
+class RandomAugment:
     def __init__(self):
         super(RandomAugment, self).__init__()
         self.random_crop_data = RandomCropData()
