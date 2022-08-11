@@ -27,7 +27,7 @@ class L1BalanceCELoss(nn.Cell):
     Note: The meaning of inputs can be figured out in `SegDetectorLossBuilder`.
     '''
 
-    def __init__(self, eps=1e-6, l1_scale=10, bce_scale=1):
+    def __init__(self, eps=1e-6, l1_scale=10, bce_scale=5):
         super(L1BalanceCELoss, self).__init__()
 
         self.dice_loss = DiceLoss(eps=eps)
@@ -232,8 +232,8 @@ def test_new():
     # print(loss)
     # end = time.time()
     # print("time:{}".format(end-start))
-    
-    
+
+
     # MaskL1Loss test
     MaskL1 = MaskL1Loss()
     loss = MaskL1(threshold_maps, gt, mask)

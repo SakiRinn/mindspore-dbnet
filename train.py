@@ -32,7 +32,6 @@ def train():
     data_loader = DataLoader(config, isTrain=True)
     train_dataset = ds.GeneratorDataset(data_loader, ['img', 'gts', 'gt_masks', 'thresh_maps', 'thresh_masks'])
     train_dataset = train_dataset.batch(config['train']['batch_size'])
-    # default batch size 16. dataset size 63.
 
     ## Model & Loss & Optimizer
     net = DBnet(isTrain=True)
@@ -42,7 +41,7 @@ def train():
     model = Model(net_with_loss, optimizer=optim)
 
     ## Train
-    config_ck = CheckpointConfig(keep_checkpoint_max=10)
+    config_ck = CheckpointConfig(save_checkpoint_steps=1000, keep_checkpoint_max=10)
     ckpoint = ModelCheckpoint(prefix="DBnet", directory="./checkpoints/DBnet/", config=config_ck)
     model.train(config['train']['n_epoch'], train_dataset, dataset_sink_mode=False,
                 callbacks=[LossMonitor(), LearningRateScheduler(learning_rate_function), ckpoint])

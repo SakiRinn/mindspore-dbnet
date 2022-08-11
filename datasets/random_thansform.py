@@ -23,7 +23,7 @@ def solve_polys(polys):
 
 
 class RandomCropData:
-    def __init__(self, max_tries=100, min_crop_side_ratio=0.1, crop_size=(640, 640)):
+    def __init__(self, max_tries=10, min_crop_side_ratio=0.1, crop_size=(640, 640)):
         self.size = crop_size
         self.min_crop_side_ratio = min_crop_side_ratio
         self.max_tries = max_tries
