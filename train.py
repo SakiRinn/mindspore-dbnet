@@ -5,11 +5,11 @@ import mindspore.dataset as ds
 import mindspore.nn as nn
 from mindspore.train.callback import LearningRateScheduler, CheckpointConfig, ModelCheckpoint, LossMonitor
 from mindspore.train.model import Model
-from mindspore import context
+from mindspore import context, load_checkpoint
 
 from datasets.load import DataLoader
 import modules.loss as loss
-from modules.model import DBnet, DBnetPP, WithLossCell
+from modules.model import DBnet, DBnetPP, WithLossCell, StopCallBack
 
 
 def learning_rate_function(lr, cur_epoch_num):
@@ -36,46 +36,28 @@ def train():
 
     ## Network
     network = DBnet(isTrain=True)
-    # pretrained_weights = load_checkpoint(config['train']['resume'])
-    # load_param_into_net(network.resnet, pretrained_weights)
 
     ## Model: Loss & Optimizer
-    opt = nn.SGD(params=network.trainable_params(), learning_rate=0.007, momentum=0.9, weight_decay=5e-4)
+    optim = nn.SGD(params=network.trainable_params(), learning_rate=0.007, momentum=0.9, weight_decay=1e-4)
     criterion = loss.L1BalanceCELoss()
     network_with_loss = WithLossCell(network, criterion)
-    model = Model(network_with_loss, optimizer=opt)
+    model = Model(network_with_loss, optimizer=optim)
 
     ## Train
-    config_ck = CheckpointConfig(save_checkpoint_steps=63, keep_checkpoint_max=10)
+    config_ck = CheckpointConfig(keep_checkpoint_max=10)
     ckpoint = ModelCheckpoint(prefix="DBnet", directory="./checkpoints/DBnet/", config=config_ck)
     model.train(config['train']['n_epoch'], train_dataset, dataset_sink_mode=False,
                 callbacks=[LossMonitor(), LearningRateScheduler(learning_rate_function), ckpoint])
 
+    #need to stop at a certain time
+    # config_ck = CheckpointConfig(keep_checkpoint_max=10)
+    # ckpoint = ModelCheckpoint(prefix="DBnet", directory="./checkpoints/DBnetPP/", config=config_ck)
+    # stop = StopCallBack(stop_epoch=2, stop_step=230)
+    # model.train(config['train']['n_epoch'], train_dataset, dataset_sink_mode=False,
+    #             callbacks=[LossMonitor(), LearningRateScheduler(learning_rate_function), ckpoint, stop])
+
 
 if __name__ == '__main__':
-    context.set_context(mode=context.PYNATIVE_MODE, device_target="Ascend", device_id=6)
+    context.set_context(mode=context.PYNATIVE_MODE, device_target="Ascend", device_id=0)
     train()
     print("Train has completed.")
-
-
-# def feed(train_dataset):
-# 	# debug function
-# 	for item in train_dataset.create_dict_iterator(output_numpy=True):
-
-# 		# print(item)
-# 		img, gts, gt_masks, thresh_maps, thresh_masks = item['img'], item['gts'], item['gt_masks'], item['thresh_maps'], item['thresh_masks']
-
-# 		np.save("/opt/nvme1n1/wz/dbnet_torch/gts.npy", gts)
-# 		np.save("/opt/nvme1n1/wz/dbnet_torch/gt_masks.npy", gt_masks)
-# 		np.save("/opt/nvme1n1/wz/dbnet_torch/thresh_maps.npy", thresh_maps)
-# 		np.save("/opt/nvme1n1/wz/dbnet_torch/thresh_masks.npy", thresh_masks)
-
-# img = Tensor(img, dtype=ms.float32)
-# gts = Tensor(gts, dtype=ms.float32)
-# gt_masks = Tensor(gt_masks, dtype=ms.float32)
-# thresh_masks = Tensor(thresh_masks, dtype=ms.float32)
-# thresh_maps = Tensor(thresh_maps, dtype=ms.float32)
-
-# output_data = network_with_loss(img, gts, gt_masks, thresh_maps, thresh_masks)
-
-# print(output_data)

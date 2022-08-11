@@ -24,7 +24,6 @@ class WithEvalCell(nn.Cell):
         self.model = model
         self.metric = QuadMetric()
         self.post_process = SegDetectorRepresenter()
-        self.count = 0
 
     def construct(self, batch):
         start = time.time()
@@ -42,19 +41,24 @@ class WithEvalCell(nn.Cell):
         total_frame = 0.0
         total_time = 0.0
         raw_metrics = []
+        count = 0
 
         for batch in tqdm(dataset):
+
+            # debug
+            # batch['img'] = Tensor(np.load('test_np/img.npy'))
+
             raw_metric, (cur_frame, cur_time) = self(batch)
             raw_metrics.append(raw_metric)
 
             print('\n', raw_metric['evaluationLog'], end='')
-            print(raw_metric['recall'], raw_metric['precision'])
+            print(f"Recall: {raw_metric['recall']}, Precision: {raw_metric['precision']}, Hmean: {raw_metric['hmean']}")
             total_frame += cur_frame
             total_time += cur_time
 
-            self.count += 1
+            count += 1
             if show_imgs:
-                img = batch['original_img'].asnumpy().squeeze().astype('uint8')
+                img = batch['original'].asnumpy().squeeze().astype('uint8')
                 # gt
                 for idx, poly in enumerate(raw_metric['gtPolys']):
                     poly = np.expand_dims(poly, -2).astype(np.int32)
@@ -71,7 +75,7 @@ class WithEvalCell(nn.Cell):
                         cv2.polylines(img, [poly], True, (0, 255, 0), 4)
                 if not os.path.exists('images'):
                     os.makedirs('images')
-                cv2.imwrite(f'images/eval_{self.count}.jpg', img)
+                cv2.imwrite(f'images/eval_{count}.jpg', img)
 
         metrics = self.metric.gather_measure(raw_metrics)
         print(f'FPS: {total_frame / total_time}')
@@ -85,7 +89,7 @@ def eval(model: nn.Cell, path: str):
 
     ## Dataset
     data_loader = DataLoader(config, isTrain=False)
-    val_dataset = ds.GeneratorDataset(data_loader, ['original_img', 'img', 'polys', 'dontcare'])
+    val_dataset = ds.GeneratorDataset(data_loader, ['original', 'img', 'polys', 'dontcare'])
     val_dataset = val_dataset.batch(1)
     dataset = val_dataset.create_dict_iterator()
 
@@ -100,5 +104,5 @@ def eval(model: nn.Cell, path: str):
 
 
 if __name__ == '__main__':
-    context.set_context(mode=context.PYNATIVE_MODE, device_target="Ascend", device_id=6)
-    eval(DBnet(isTrain=False), 'checkpoints/pthTOckpt/LiaoTOckpt.ckpt')
+    context.set_context(mode=context.PYNATIVE_MODE, device_target="Ascend", device_id=7)
+    eval(DBnet(isTrain=False), 'checkpoints/pthTOckpt/LiaoResnet18_final_TOckpt.ckpt')

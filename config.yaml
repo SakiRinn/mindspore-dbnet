@@ -37,15 +37,15 @@ test:
       adaptive: False
       short_side: 736
       thresh: 0.5
-      box_thresh: 0.6
+      box_thresh: 0.55
       unclip_ratio: 2
       min_size: 3
       max_candidates: 1000
       is_poly: False
       test_img_format: '.jpg'
       out_dir: './outputs_test'
-      test_img_dir: "./data/test_images/"
-      test_gt_dir: "./data/test_gts/"
+      test_img_dir: "./data/test_images"
+      test_gt_dir: "./data/test_gts"
       val_img_format: '.jpg'
 general:
       is_show: False

@@ -13,7 +13,7 @@ from utils.asf import ScaleFeatureSelection
 
 
 class SegDetector(nn.Cell):
-    def __init__(self, in_channels=[64, 128, 256, 512], inner_channels=256, k=10,
+    def __init__(self, in_channels=[64, 128, 256, 512], inner_channels=256, k=50,
                  bias=False, adaptive=True, smooth=False, serial=False, training=False):
         '''
         in_channels:resnet18=[64, 128, 256, 512]
@@ -30,23 +30,23 @@ class SegDetector(nn.Cell):
         self.serial = serial
         self.training = training
 
-        self.in5 = nn.Conv2d(in_channels[-1], inner_channels, 1, has_bias=bias, weight_init="ones")
-        self.in4 = nn.Conv2d(in_channels[-2], inner_channels, 1, has_bias=bias, weight_init="ones")
-        self.in3 = nn.Conv2d(in_channels[-3], inner_channels, 1, has_bias=bias, weight_init="ones")
-        self.in2 = nn.Conv2d(in_channels[-4], inner_channels, 1, has_bias=bias, weight_init="ones")
+        self.in5 = nn.Conv2d(in_channels[-1], inner_channels, 1, has_bias=bias, weight_init=HeNormal())
+        self.in4 = nn.Conv2d(in_channels[-2], inner_channels, 1, has_bias=bias, weight_init=HeNormal())
+        self.in3 = nn.Conv2d(in_channels[-3], inner_channels, 1, has_bias=bias, weight_init=HeNormal())
+        self.in2 = nn.Conv2d(in_channels[-4], inner_channels, 1, has_bias=bias, weight_init=HeNormal())
 
         self.out5 = nn.Conv2d(inner_channels, inner_channels // 4, 3, pad_mode="pad", padding=1, has_bias=bias,
-                              weight_init="ones")
+                              weight_init=HeNormal())
         self.out4 = nn.Conv2d(inner_channels, inner_channels // 4, 3, pad_mode="pad", padding=1, has_bias=bias,
-                              weight_init="ones")
+                              weight_init=HeNormal())
         self.out3 = nn.Conv2d(inner_channels, inner_channels // 4, 3, pad_mode="pad", padding=1, has_bias=bias,
-                              weight_init="ones")
+                              weight_init=HeNormal())
         self.out2 = nn.Conv2d(inner_channels, inner_channels // 4, 3, pad_mode="pad", padding=1, has_bias=bias,
-                              weight_init="ones")
+                              weight_init=HeNormal())
 
         self.binarize = nn.SequentialCell(
             nn.Conv2d(inner_channels, inner_channels //
-                      4, 3, pad_mode="pad", padding=1, has_bias=bias, weight_init="ones"),
+                      4, 3, pad_mode="pad", padding=1, has_bias=bias, weight_init=HeNormal()),
             nn.BatchNorm2d(inner_channels // 4, use_batch_statistics=None, momentum=0.1),
             nn.ReLU(),
             nn.Conv2dTranspose(inner_channels // 4, inner_channels // 4, 2, stride=2, has_bias=True),
@@ -80,7 +80,7 @@ class SegDetector(nn.Cell):
 
             if isinstance(m, nn.Conv2dTranspose):
 
-                m.weight = init.initializer('ones', m.weight.shape)
+                m.weight = init.initializer(HeNormal(), m.weight.shape)
                 m.bias = init.initializer('zeros', m.bias.shape)
 
             elif isinstance(m, nn.Conv2d):
@@ -100,15 +100,15 @@ class SegDetector(nn.Cell):
             in_channels += 1
 
         self.thresh = nn.SequentialCell(
-            nn.Conv2d(in_channels, inner_channels //
-                      4, 3, pad_mode="pad", padding=1, has_bias=bias, weight_init="ones"),  # plane:1024->256
+            nn.Conv2d(in_channels, inner_channels // 4,
+                      3, pad_mode="pad", padding=1, has_bias=bias, weight_init=HeNormal()),  # plane:1024->256
             nn.BatchNorm2d(inner_channels // 4, use_batch_statistics=None, momentum=0.1),
             nn.ReLU(),
-            nn.Conv2dTranspose(in_channels // 4, in_channels // 4, 2, stride=2, weight_init="ones", has_bias=True),
+            nn.Conv2dTranspose(in_channels // 4, in_channels // 4, 2, stride=2, weight_init=HeNormal(), has_bias=True),
             # size*2
             nn.BatchNorm2d(inner_channels // 4, use_batch_statistics=None, momentum=0.1),
             nn.ReLU(),
-            nn.Conv2dTranspose(in_channels // 4, 1, 2, stride=2, weight_init="ones", has_bias=True),  # size*2, plane=1
+            nn.Conv2dTranspose(in_channels // 4, 1, 2, stride=2, weight_init=HeNormal(), has_bias=True),  # size*2, plane=1
             nn.Sigmoid())
 
         return self.thresh
@@ -129,9 +129,9 @@ class SegDetector(nn.Cell):
         in2 = self.in2(c2)
 
         # 进行上采样，准备进行连接操作
-        up5 = ops.ResizeNearestNeighbor((in4.shape[2], in4.shape[2]))
-        up4 = ops.ResizeNearestNeighbor((in3.shape[2], in3.shape[2]))
-        up3 = ops.ResizeNearestNeighbor((in2.shape[2], in2.shape[2]))
+        up5 = ops.ResizeNearestNeighbor((in4.shape[2], in4.shape[3]))
+        up4 = ops.ResizeNearestNeighbor((in3.shape[2], in3.shape[3]))
+        up3 = ops.ResizeNearestNeighbor((in2.shape[2], in2.shape[3]))
 
         out4 = up5(in5) + in4  # 1/16
         out3 = up4(out4) + in3  # 1/8
@@ -150,10 +150,9 @@ class SegDetector(nn.Cell):
 
         # this is the pred module, not binarization module;
         # We do not correct the name due to the trained model.
-        binary = self.binarize(fuse)    # FIXME: 全部为0
+        binary = self.binarize(fuse)
 
         pred = {}
-
         pred['binary'] = binary
 
         if self.adaptive and self.training:

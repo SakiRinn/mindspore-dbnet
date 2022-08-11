@@ -21,10 +21,11 @@ class DBnet(nn.Cell):
     def __init__(self, isTrain=True):
         super(DBnet, self).__init__(auto_prefix=False)
 
-        self.resnet = backbone.deformable_resnet18()
+        self.resnet = backbone.resnet18(pretrained=True)
         self.segdetector = detector.SegDetector(training=isTrain, smooth=True)
 
     def construct(self, img):
+        # print(img.shape)
         pred = self.resnet(img)
         pred = self.segdetector(pred)
 
@@ -62,7 +63,6 @@ class WithLossCell(nn.Cell):
 
     def construct(self, img, gt, gt_mask, thresh_map, thresh_mask):
         pred = self._backbone(img)
-        # print(pred)
         loss = self._loss_fn(pred, gt, gt_mask, thresh_map, thresh_mask)
 
         return loss
@@ -214,10 +214,24 @@ class LossCallBack_new(Callback):
     #         raw_metrics.append(raw_metric)
 
 
+
+class StopCallBack(Callback):
+    def __init__(self, stop_epoch, stop_step):
+        super(StopCallBack,self).__init__()
+        self.stop_step = stop_step
+        self.stop_epoch = stop_epoch
+
+    def step_end(self, run_context):
+        cb_params = run_context.original_args()
+        epoch_num = cb_params.cur_epoch_num
+        cur_step_in_epoch = (cb_params.cur_step_num - 1) % cb_params.batch_num + 1
+        if epoch_num == self.stop_epoch and cur_step_in_epoch==self.stop_step:
+            run_context.request_stop()
+
 if __name__ == '__main__':
     from loss import L1BalanceCELoss
     from mindspore import context
-    context.set_context(mode=context.GRAPH_MODE, device_target="Ascend", device_id=6)
+    context.set_context(mode=context.PYNATIVE_MODE, device_target="Ascend", device_id=6)
 
     network = DBnet()
     criterion = L1BalanceCELoss()

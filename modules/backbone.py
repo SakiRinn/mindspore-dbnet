@@ -237,7 +237,7 @@ class ResNet(nn.Cell):
         return x2, x3, x4, x5
 
 
-def resnet18(pretrained=False, **kwargs):
+def resnet18(pretrained=True, **kwargs):
     model = ResNet(BasicBlock, [2, 2, 2, 2], **kwargs)
 
     if pretrained:
@@ -247,7 +247,7 @@ def resnet18(pretrained=False, **kwargs):
     return model
 
 
-def deformable_resnet18(pretrained=False, **kwargs):
+def deformable_resnet18(pretrained=True, **kwargs):
 
     model = ResNet(BasicBlock, [2, 2, 2, 2], dcn=dict(deformable_groups=1), **kwargs)
 
@@ -284,150 +284,3 @@ def deformable_resnet50(pretrained=True, **kwargs):
         param_not_load = load_param_into_net(model, ms_dict)
 
     return model
-
-
-def test_conv():
-    ones = ops.Ones()
-
-    data = ones((1, 64, 184, 320), ms.float32)
-
-    print("原尺寸：{}".format(data.shape))
-
-    conv = nn.Conv2d(64, 64, kernel_size=3, stride=1, pad_mode="pad",
-                     padding=1, weight_init="ones")
-
-    output = conv(data)
-
-    print("卷积后尺寸：{}".format(output.shape))
-
-    print(output[0][0][1][:100])
-
-
-def test_dcn():
-    ones = ops.Ones()
-
-    data = ones((1, 64, 184, 320), ms.float32)
-
-    print("原尺寸：{}".format(data.shape))
-
-    conv = DeformConv2d(64, 64, kernel_size=3, padding=1, stride=1)
-
-    output = conv(data)
-
-    print("卷积后尺寸：{}".format(output.shape))
-
-    print(output[0][0][1][:100])
-
-
-def test_bn():
-    bn = nn.BatchNorm2d(64, momentum=0.1, use_batch_statistics=None)
-
-    data = np.load("/opt/nvme1n1/wz/dbnet_torch/bninput.npy")
-
-    output = bn(Tensor(data, dtype=ms.float32))
-
-    print(output[0][0][0][:5])
-
-
-def test_basicblock():
-    block = BasicBlock(inplanes=64, planes=64)
-
-    # np.random.seed(0)
-    # data = np.random.rand(1,64,184,320)
-
-    ones = ops.Ones()
-
-    data = ones((1, 64, 184, 320), ms.float32)
-
-    # print("test BasicBlock input ", data[0][0][0][:100])
-
-    inp_tensor = Tensor(data, dtype=ms.float32)
-
-    output = block(inp_tensor)
-
-    print(output.shape)
-    print("test BasicBlock output ", output[0][3][3][:100])
-
-
-def test_Bottleneck():
-    block = Bottleneck(inplanes=64, planes=64)
-
-    # np.random.seed(0)
-    # data = np.random.rand(1,64,184,320)
-
-    ones = ops.Ones()
-
-    data = ones((1, 64, 256, 256), ms.float32)
-
-    # print("test BasicBlock input ", data[0][0][0][:100])
-
-    inp_tensor = Tensor(data, dtype=ms.float32)
-
-    output = block(inp_tensor)
-
-    print(output.shape)
-    print("test Bottleneck output ", output[0][3][3][:100])
-
-
-def test_deformable_resnet18():
-    data = np.load("/old/wlh/DBnetpp_mindspore/dbnet/test.npy")
-
-    print("原图大小为：{}".format(data.shape))
-    resnet = ResNet(BasicBlock, [2, 2, 2, 2], dcn={'deformable_groups': 1})
-
-    inp_tensor = Tensor(data, dtype=ms.float32)
-
-    output = resnet(inp_tensor)
-
-    for t in output:
-        print(t.shape)
-
-
-def test_resnet18():
-    data = np.load("/old/wlh/DBnetpp_mindspore/dbnet/test.npy")
-
-    print("原图大小为：{}".format(data.shape))
-    resnet = ResNet(BasicBlock, [2, 2, 2, 2])
-
-    inp_tensor = Tensor(data, dtype=ms.float32)
-
-    output = resnet(inp_tensor)
-
-    for t in output:
-        print(t.shape)
-    print(output[0][0][0][1][:100])
-
-
-def test_resnet50():
-    data = np.load("/old/wlh/DBnetpp_mindspore/dbnet/test.npy")
-
-    print("原图大小为：{}".format(data.shape))
-    resnet = ResNet(Bottleneck, [3, 4, 6, 3])
-
-    inp_tensor = Tensor(data, dtype=ms.float32)
-
-    output = resnet(inp_tensor)
-
-    for t in output:
-        print(t.shape)
-    print(output[0][0][0][1][:100])
-
-
-def test_deformative_resnet50():
-    data = np.load("/old/wlh/DBnetpp_mindspore/dbnet/test.npy")
-
-    print("原图大小为：{}".format(data.shape))
-    resnet = ResNet(Bottleneck, [3, 4, 6, 3], dcn={'deformable_groups': 1})
-
-    inp_tensor = Tensor(data, dtype=ms.float32)
-
-    output = resnet(inp_tensor)
-
-    for t in output:
-        print(t.shape)
-    print(output[0][0][0][1][:100])
-
-
-if __name__ == "__main__":
-    context.set_context(device_id=2, mode=context.GRAPH_MODE)
-    test_resnet50()

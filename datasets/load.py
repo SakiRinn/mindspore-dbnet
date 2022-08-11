@@ -1,9 +1,11 @@
+from mindspore import Tensor
 import numpy as np
 from PIL import Image
 import glob
 import cv2
 import os
 import yaml
+import math
 
 from mindspore.dataset.vision.py_transforms import RandomColorAdjust, ToTensor, ToPIL, Normalize
 import sys
@@ -36,8 +38,27 @@ def get_bboxes(gt_path, config):
     return np.array(polys), np.array(dontcare)
 
 
+def resize(img, polys=None, denominator=32, isTrain=True):
+    w_scale = math.ceil(img.shape[1] / denominator) * denominator / img.shape[1]
+    h_scale = math.ceil(img.shape[0] / denominator) * denominator / img.shape[0]
+    img = cv2.resize(img, dsize=None, fx=w_scale, fy=h_scale)
+    if polys is None:
+        return img
+    if isTrain:
+        new_polys = []
+        for poly in polys:
+            poly[:, 0] = poly[:, 0] * w_scale
+            poly[:, 1] = poly[:, 1] * h_scale
+            new_polys.append(poly)
+        polys = new_polys
+    else:
+        polys[:, :, 0] = polys[:, :, 0] * w_scale
+        polys[:, :, 1] = polys[:, :, 1] * h_scale
+    return img, polys
+
 class DataLoader():
     def __init__(self, config, isTrain=True):
+        self.RGB_MEAN = np.array([122.67891434, 116.66876762, 104.00698793])
         self.config = config
         self.isTrain = isTrain
 
@@ -81,7 +102,7 @@ class DataLoader():
 
         # Getting
         img = get_img(img_path)
-        original_img = img
+        original = resize(img)
         polys, dontcare = get_bboxes(gt_path, self.config)
 
         # Random Augment
@@ -92,6 +113,7 @@ class DataLoader():
             img, polys, dontcare = self.ra.random_crop(img, polys, dontcare)
         else:
             polys = polys.reshape((polys.shape[0], polys.shape[1] // 2, 2))
+        img, polys = resize(img, polys, isTrain=self.isTrain)
 
         # Post Process
         if self.isTrain:
@@ -112,17 +134,17 @@ class DataLoader():
         # Random Colorize
         if self.isTrain and self.config['train']['is_transform']:
             colorjitter = RandomColorAdjust(brightness=32.0 / 255, saturation=0.5)
-            img = colorjitter(ToPIL()(img))
+            img = colorjitter(ToPIL()(img.astype(np.uint8)))
 
         # Normalize
+        img -= self.RGB_MEAN
         img = ToTensor()(img)
-        img = Normalize((0.485, 0.456, 0.406), (0.229, 0.224, 0.225))(img)
-
+        # img = Normalize((0.485, 0.456, 0.406), (0.229, 0.224, 0.225))(img)
 
         if self.isTrain:
             return img, gt, gt_mask, thresh_map, thresh_mask
         else:
-            return original_img, img, polys, dontcare
+            return original, img, polys, dontcare
 
 
 if __name__ == '__main__':
@@ -131,10 +153,10 @@ if __name__ == '__main__':
     stream.close()
     data_loader = DataLoader(config, isTrain=False)
     import mindspore.dataset as ds
-    train_dataset = ds.GeneratorDataset(data_loader, ['img', 'polys', 'dontcare'])
+    train_dataset = ds.GeneratorDataset(data_loader, ['original', 'img', 'polys', 'dontcare'])
     # train_dataset = ds.GeneratorDataset(data_loader, ['img', 'gt', 'gt_mask', 'thresh_map', 'thresh_mask'])
     train_dataset = train_dataset.batch(1)
     it = train_dataset.create_dict_iterator()
     test = next(it)
-    sam = data_loader[19]
+    sam = data_loader[0]
     print(sam[0].shape, len(sam[1]), sam[2])

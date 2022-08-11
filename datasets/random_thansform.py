@@ -216,13 +216,13 @@ class RandomAugment():
             img = cv2.resize(img, dsize=None, fx=scale, fy=scale)
         h, w = img.shape[0:2]
 
-        # Get scale (randomly or not).
+        # Get scale randomly.
         random_scale = np.array([0.5, 1.0, 2.0, 3.0])
         scale = np.random.choice(random_scale)
         # If less than min_size, scale will be clipped to min_scale.
         if min(h, w) * scale <= min_size:
             scale = (min_size + 10) * 1.0 / min(h, w)
-        # Rescale img
+        # Rescale img.
         img = cv2.resize(img, dsize=None, fx=scale, fy=scale)
         # Rescale polys: (N, 8) -> (N, 4, 2)
         new_polys = (polys_scale * ([img.shape[1], img.shape[0]] * max_points)) \
