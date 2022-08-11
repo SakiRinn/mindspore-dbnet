@@ -55,6 +55,6 @@ def train():
 
 
 if __name__ == '__main__':
-    context.set_context(mode=context.PYNATIVE_MODE, device_target="Ascend", device_id=0)
+    context.set_context(mode=context.GRAPH_MODE, device_target="Ascend", device_id=0)
     train()
     print("Train has completed.")

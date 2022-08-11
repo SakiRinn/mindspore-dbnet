@@ -28,8 +28,8 @@ train:
       schedule: [500,800,1000]
       polygon: True
       box_thresh: 0.7
-      thresh: 0.3,
-      max_candidates: 10,
+      thresh: 0.3
+      max_candidates: 1000
       dest: 'binary'
 test:
       merge_conv_bn: False
