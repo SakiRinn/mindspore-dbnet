@@ -1,6 +1,7 @@
 import yaml
 import numpy as np
 
+import mindspore as ms
 import mindspore.dataset as ds
 import mindspore.nn as nn
 from mindspore.train.callback import LearningRateScheduler, CheckpointConfig, ModelCheckpoint, LossMonitor
@@ -55,6 +56,9 @@ def train():
 
 
 if __name__ == '__main__':
-    context.set_context(mode=context.GRAPH_MODE, device_target="Ascend", device_id=0)
+    from mindspore.communication import init
+    context.set_context(mode=context.GRAPH_MODE, device_target="GPU")
+    # init("nccl")
+    # ms.set_auto_parallel_context(gradients_mean=True)
     train()
     print("Train has completed.")
