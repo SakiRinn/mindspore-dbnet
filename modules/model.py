@@ -21,7 +21,7 @@ class DBnet(nn.Cell):
     def __init__(self, isTrain=True):
         super(DBnet, self).__init__(auto_prefix=False)
 
-        self.resnet = backbone.resnet18(pretrained=True)
+        self.resnet = backbone.resnet18(pretrained=False)
         self.segdetector = detector.SegDetector(training=isTrain, smooth=True)
 
     def construct(self, img):

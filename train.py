@@ -34,14 +34,12 @@ def train():
     train_dataset = train_dataset.batch(config['train']['batch_size'])
     # default batch size 16. dataset size 63.
 
-    ## Network
-    network = DBnet(isTrain=True)
-
-    ## Model: Loss & Optimizer
-    optim = nn.SGD(params=network.trainable_params(), learning_rate=0.007, momentum=0.9, weight_decay=1e-4)
+    ## Model & Loss & Optimizer
+    net = DBnet(isTrain=True)
+    optim = nn.SGD(params=net.trainable_params(), learning_rate=0.007, momentum=0.9, weight_decay=1e-4)
     criterion = loss.L1BalanceCELoss()
-    network_with_loss = WithLossCell(network, criterion)
-    model = Model(network_with_loss, optimizer=optim)
+    net_with_loss = WithLossCell(net, criterion)
+    model = Model(net_with_loss, optimizer=optim)
 
     ## Train
     config_ck = CheckpointConfig(keep_checkpoint_max=10)
