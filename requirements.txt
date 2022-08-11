@@ -1,0 +1,5 @@
+tqdm
+opencv-python==4.1.2.30
+shapely
+pyclipper
+imgaug==0.2.8
