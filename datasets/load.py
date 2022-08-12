@@ -72,8 +72,8 @@ class DataLoader():
             img_paths = glob.glob(os.path.join(config['train']['img_dir'],
                                                '*' + config['train']['img_format']))
         else:
-            img_paths = glob.glob(os.path.join(config['test']['img_dir'],
-                                               '*' + config['test']['img_format']))
+            img_paths = glob.glob(os.path.join(config['eval']['img_dir'],
+                                               '*' + config['eval']['img_format']))
 
         if self.isTrain:
             img_dir = config['train']['gt_dir']
@@ -84,7 +84,7 @@ class DataLoader():
                 gt_paths = [os.path.join(img_dir, img_path.split('/')[-1].split('.')[0] + '.txt' )
                             for img_path in img_paths]
         else:
-            img_dir = config['test']['gt_dir']
+            img_dir = config['eval']['gt_dir']
             if (config['dataset']['is_icdar2015']):
                 gt_paths = [os.path.join(img_dir, 'gt_' + img_path.split('/')[-1].split('.')[0] + '.txt')
                             for img_path in img_paths]

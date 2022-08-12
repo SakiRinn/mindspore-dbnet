@@ -22,6 +22,7 @@ class WithEvalCell(nn.Cell):
     def __init__(self, model, config):
         super(WithEvalCell, self).__init__(auto_prefix=False)
         self.model = model
+        self.config = config
         self.metric = QuadMetric(config['eval']['polygon'])
         self.post_process = SegDetectorRepresenter(config['eval']['thresh'], config['eval']['box_thresh'],
                                                    config['eval']['max_candidates'],
@@ -33,8 +34,7 @@ class WithEvalCell(nn.Cell):
         start = time.time()
 
         preds = self.model(batch['img'])
-        boxes, scores = self.post_process(preds, self.config['eval']['polygons'],
-                                          self.config['eval']['dest'])
+        boxes, scores = self.post_process(preds)
         raw_metric = self.metric.validate_measure(batch, (boxes, scores))
 
         cur_frame = batch['img'].shape[0]
@@ -49,10 +49,6 @@ class WithEvalCell(nn.Cell):
         count = 0
 
         for batch in tqdm(dataset):
-
-            # debug
-            # batch['img'] = Tensor(np.load('test_np/img.npy'))
-
             raw_metric, (cur_frame, cur_time) = self(batch)
             raw_metrics.append(raw_metric)
 
@@ -86,7 +82,7 @@ class WithEvalCell(nn.Cell):
         print(f'FPS: {total_frame / total_time}')
         print(metrics['recall'].avg, metrics['precision'].avg, metrics['fmeasure'].avg)
 
-def eval(path: str):
+def evaluate(path: str):
     ## Config
     stream = open('config.yaml', 'r', encoding='utf-8')
     config = yaml.load(stream, Loader=yaml.FullLoader)
@@ -110,5 +106,5 @@ def eval(path: str):
 
 
 if __name__ == '__main__':
-    context.set_context(mode=context.PYNATIVE_MODE, device_target="Ascend", device_id=7)
-    eval('checkpoints/DBnet/DBnet-24_34.ckpt')
+    context.set_context(mode=context.PYNATIVE_MODE, device_target="Ascend", device_id=6)
+    evaluate('./checkpoints/DBnet/DBnet_2-29_27.ckpt')

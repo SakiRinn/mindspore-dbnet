@@ -56,7 +56,7 @@ def train(path=None):
     ## Train
     config_ck = CheckpointConfig(save_checkpoint_steps=config['train']['save_steps'],
                                  keep_checkpoint_max=config['train']['max_checkpoints'])
-    ckpoint = ModelCheckpoint(prefix=eval(config['net']),
+    ckpoint = ModelCheckpoint(prefix=(config['net']),
                               directory=config['train']['output_dir'],
                               config=config_ck)
     model.train(config['train']['epochs'], train_dataset, dataset_sink_mode=False,
@@ -71,6 +71,6 @@ def train(path=None):
 
 
 if __name__ == '__main__':
-    context.set_context(mode=context.GRAPH_MODE, device_target="Ascend", device_id=0)
-    train()
+    context.set_context(mode=context.GRAPH_MODE, device_target="Ascend", device_id=2)
+    train(path = 'checkpoints/pthTOckpt/pretrained_RN18_ckpoint.ckpt')
     print("Train has completed.")
