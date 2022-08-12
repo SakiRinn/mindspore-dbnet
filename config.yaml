@@ -10,7 +10,7 @@ segdetector:
       adaptive: True
       serial: False
 loss:
-      eps: 1e-6
+      eps: 0.000001
       l1_scale: 10
       bce_scale: 5
 optimizer:
@@ -18,7 +18,7 @@ optimizer:
             value: 0.007
             factor: 0.9
       momentum: 0.9
-      weight_decay: 1e-4
+      weight_decay: 0.0001
 dataset:
       is_show: False
       is_icdar2015: True
