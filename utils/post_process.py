@@ -7,14 +7,17 @@ from mindspore.common import dtype as mstype
 
 
 class SegDetectorRepresenter:
-    def __init__(self, thresh=0.3, box_thresh=0.7, max_candidates=1000, unclip_ratio=1.5):
+    def __init__(self, thresh=0.3, box_thresh=0.7, max_candidates=1000, unclip_ratio=1.5,
+                 is_output_polygon=False, dest='binary'):
         self.min_size = 3
         self.thresh = thresh
         self.box_thresh = box_thresh
         self.max_candidates = max_candidates
         self.unclip_ratio = unclip_ratio
+        self.is_output_polygon = is_output_polygon
+        self.dest = dest
 
-    def __call__(self, pred, is_output_polygon=False, dest='binary'):
+    def __call__(self, pred):
         '''
         batch: (image, polygons, ignore_tags
         batch: a dict produced by dataloaders.
@@ -26,13 +29,13 @@ class SegDetectorRepresenter:
             thresh: [if exists] thresh hold prediction with shape (N, H, W)
             thresh_binary: [if exists] binarized with threshhold, (N, H, W)
         '''
-        pred = pred[dest][:, 0, :, :]
+        pred = pred[self.dest][:, 0, :, :]
         segmentation = ops.cast(self.binarize(pred), mstype.float16)
         boxes_batch = []
         scores_batch = []
         for batch_index in range(pred.shape[0]):
             height, width = pred.shape[1:]
-            if is_output_polygon:
+            if self.is_output_polygon:
                 boxes, scores = self.polygons_from_bitmap(pred[batch_index], segmentation[batch_index],
                                                           width, height)
             else:

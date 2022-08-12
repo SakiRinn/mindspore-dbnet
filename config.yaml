@@ -1,51 +1,55 @@
-train:
-      backbone: 'resnet18'
-      pretrained: True
-      HeadName: 'DB'
+net: DBnet
+backbone:
+      initializer: resnet18
+      pretrained: False
+segdetector:
       in_channels: [64, 128, 256, 512]  #[256, 512, 1024, 2048]
       inner_channels: 256
       k: 50
+      bias: False
       adaptive: True
-      start_val_epoch: 1000
-      n_epoch: 1200
-      batch_size: 24
-      use_sr: True
-      sr_lr: 0.00001
-      base_lr: 0.002
-      num_workers: 0
-      show_step: 5
-      print_format: 'linux'  # linux or windows
-      restore: True
-      resume: "./dbnet/pretrained_synthtext_resnet18.ckpt"
-      checkpoints: './checkpoints'
-      is_transform: True
-      train_img_format: '.jpg'
-      train_img_dir: "./data/train_images/"
-      train_gt_dir: "./data/train_gts/"
-      random_angle: [-10, 10]
-      output_path: './outputs_val'
-      decay_method: 'e_decay'  # e_decay: 指数衰减, s_decay: 指定epoch衰减
-      schedule: [500,800,1000]
-      polygon: True
-      box_thresh: 0.7
-      thresh: 0.3
-      max_candidates: 1000
-      dest: 'binary'
-test:
-      merge_conv_bn: False
-      adaptive: False
-      short_side: 736
-      thresh: 0.5
-      box_thresh: 0.55
-      unclip_ratio: 2
-      min_size: 3
-      max_candidates: 1000
-      is_poly: False
-      test_img_format: '.jpg'
-      out_dir: './outputs_test'
-      test_img_dir: "./data/test_images"
-      test_gt_dir: "./data/test_gts"
-      val_img_format: '.jpg'
-general:
+      serial: False
+loss:
+      eps: 1e-6
+      l1_scale: 10
+      bce_scale: 5
+optimizer:
+      lr:
+            value: 0.007
+            factor: 0.9
+      momentum: 0.9
+      weight_decay: 1e-4
+dataset:
       is_show: False
       is_icdar2015: True
+      num_workers: 4
+      min_size: 640
+      random_angle: [-10, 10]
+      random_crop:
+            max_tries: 10
+            min_crop_side_ratio: 0.1
+train:
+      img_format: '.jpg'
+      img_dir: "./data/train_images/"
+      gt_dir: "./data/train_gts/"
+      output_dir: "./checkpoints/DBnet/"
+      epochs: 1200
+      batch_size: 24
+      save_steps: 1000
+      max_checkpoints: 10
+      is_transform: True
+      shrink_ratio: 0.4
+      min_text_size: 8
+      thresh_min: 0.3
+      thresh_max: 0.7
+test:
+      img_format: '.jpg'
+      img_dir: "./data/test_images"
+      gt_dir: "./data/test_gts"
+      output_dir: './outputs_test'
+      thresh: 0.3
+      box_thresh: 0.55
+      max_candidates: 1000
+      unclip_ratio: 1.5
+      polygon: False
+      dest: binary

@@ -19,7 +19,7 @@ from mindspore import Tensor, nn, ops, context
 #                 thresh_mask: Mask indicates regions cared by thresh supervision.
 #                 thresh_map: Threshold gt.
 
-class L1BalanceCELoss(nn.Cell):
+class L1BalanceCELoss(nn.LossBase):
     '''
     Balanced CrossEntropy Loss on `binary`,
     MaskL1Loss on `thresh`,
@@ -52,7 +52,7 @@ class L1BalanceCELoss(nn.Cell):
         return loss
 
 
-class DiceLoss(nn.Cell):
+class DiceLoss(nn.LossBase):
 
     def __init__(self, eps=1e-6):
         super(DiceLoss, self).__init__()
@@ -76,7 +76,7 @@ class DiceLoss(nn.Cell):
         return loss
 
 
-class MaskL1Loss(nn.Cell):
+class MaskL1Loss(nn.LossBase):
 
     def __init__(self, eps=1e-6):
 
@@ -92,7 +92,7 @@ class MaskL1Loss(nn.Cell):
         return loss
 
 
-class BalanceCrossEntropyLoss(nn.Cell):
+class BalanceCrossEntropyLoss(nn.LossBase):
     '''
     Balanced cross entropy loss.
     Shape:

@@ -19,17 +19,22 @@ from modules.model import DBnet, DBnetPP
 
 
 class WithEvalCell(nn.Cell):
-    def __init__(self, model):
+    def __init__(self, model, config):
         super(WithEvalCell, self).__init__(auto_prefix=False)
         self.model = model
-        self.metric = QuadMetric()
-        self.post_process = SegDetectorRepresenter()
+        self.metric = QuadMetric(config['eval']['polygon'])
+        self.post_process = SegDetectorRepresenter(config['eval']['thresh'], config['eval']['box_thresh'],
+                                                   config['eval']['max_candidates'],
+                                                   config['eval']['unclip_ratio'],
+                                                   config['eval']['polygon'],
+                                                   config['eval']['dest'])
 
     def construct(self, batch):
         start = time.time()
 
         preds = self.model(batch['img'])
-        boxes, scores = self.post_process(preds)
+        boxes, scores = self.post_process(preds, self.config['eval']['polygons'],
+                                          self.config['eval']['dest'])
         raw_metric = self.metric.validate_measure(batch, (boxes, scores))
 
         cur_frame = batch['img'].shape[0]
@@ -81,7 +86,7 @@ class WithEvalCell(nn.Cell):
         print(f'FPS: {total_frame / total_time}')
         print(metrics['recall'].avg, metrics['precision'].avg, metrics['fmeasure'].avg)
 
-def eval(model: nn.Cell, path: str):
+def eval(path: str):
     ## Config
     stream = open('config.yaml', 'r', encoding='utf-8')
     config = yaml.load(stream, Loader=yaml.FullLoader)
@@ -94,15 +99,16 @@ def eval(model: nn.Cell, path: str):
     dataset = val_dataset.create_dict_iterator()
 
     ## Model
+    net = eval(config['net'])(config, isTrain=False)
     model_dict = mindspore.load_checkpoint(path)
-    mindspore.load_param_into_net(model, model_dict)
+    mindspore.load_param_into_net(net, model_dict)
 
     ## Eval
-    eval_net = WithEvalCell(model)
+    eval_net = WithEvalCell(net, config)
     eval_net.set_train(False)
     eval_net.eval(dataset)
 
 
 if __name__ == '__main__':
     context.set_context(mode=context.PYNATIVE_MODE, device_target="Ascend", device_id=7)
-    eval(DBnet(isTrain=False), 'checkpoints/pthTOckpt/LiaoResnet18_final_TOckpt.ckpt')
+    eval('checkpoints/DBnet/DBnet-24_34.ckpt')

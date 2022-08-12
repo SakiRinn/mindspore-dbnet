@@ -18,29 +18,28 @@ from datasets.load import DataLoader
 
 class DBnet(nn.Cell):
 
-    def __init__(self, isTrain=True):
+    def __init__(self, config, isTrain=True):
         super(DBnet, self).__init__(auto_prefix=False)
 
-        self.resnet = backbone.resnet18(pretrained=False)
-        self.segdetector = detector.SegDetector(training=isTrain, smooth=True)
+        self.backbone = eval('backbone.'+config['backbone']['initializer'])(config['backbone']['pretrained'])
+        self.segdetector = detector.SegDetector(training=isTrain, **config['segdetector'])
 
     def construct(self, img):
-        # print(img.shape)
-        pred = self.resnet(img)
+        pred = self.backbone(img)
         pred = self.segdetector(pred)
 
         return pred
 
 
 class DBnetPP(nn.Cell):
-    def __init__(self, isTrain=True):
+    def __init__(self, config, isTrain=True):
         super(DBnetPP, self).__init__(auto_prefix=False)
 
-        self.resnet = backbone.deformable_resnet18()
-        self.segdetector = detector.SegDetectorPP(training=isTrain, smooth=True)
+        self.backbone = eval('backbone.'+config['backbone']['initializer'])(config['backbone']['pretrained'])
+        self.segdetector = detector.SegDetectorPP(training=isTrain, **config['segdetector'])
 
     def construct(self, img):
-        pred = self.resnet(img)
+        pred = self.backbone(img)
         pred = self.segdetector(pred)
 
         return pred

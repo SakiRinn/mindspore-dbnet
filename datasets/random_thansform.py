@@ -176,9 +176,8 @@ class RandomCropData:
 
 
 class RandomAugment:
-    def __init__(self):
-        super(RandomAugment, self).__init__()
-        self.random_crop_data = RandomCropData()
+    def __init__(self, max_tries=10, min_crop_side_ratio=0.1):
+        self.random_crop_data = RandomCropData(max_tries, min_crop_side_ratio)
 
     def augment_poly(self, aug, img_shape, poly):
         keypoints = [imgaug.Keypoint(p[0], p[1]) for p in poly]

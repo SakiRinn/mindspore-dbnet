@@ -217,7 +217,7 @@ class QuadMetric:
         self.is_output_polygon = is_output_polygon
         self.evaluator = DetectionIoUEvaluator(is_output_polygon=is_output_polygon)
 
-    def measure(self, batch, output, box_thresh=0.6):
+    def measure(self, batch, output, box_thresh=0.7):
         '''
         batch: (image, polygons, ignore_tags)
             image: tensor of shape (N, C, H, W).
@@ -243,7 +243,7 @@ class QuadMetric:
 
 
     def validate_measure(self, batch, output):
-        return self.measure(batch, output)
+        return self.measure(batch, output, box_thresh=0.55)
 
     def evaluate_measure(self, batch, output):
         return self.measure(batch, output), np.linspace(0, batch['image'].shape[0]).tolist()

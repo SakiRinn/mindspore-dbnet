@@ -14,7 +14,7 @@ from utils.asf import ScaleFeatureSelection
 
 class SegDetector(nn.Cell):
     def __init__(self, in_channels=[64, 128, 256, 512], inner_channels=256, k=50,
-                 bias=False, adaptive=True, smooth=False, serial=False, training=False):
+                 bias=False, adaptive=True, serial=False, training=False):
         '''
         in_channels:resnet18=[64, 128, 256, 512]
                     resnet50=[2048,1024,512,256]

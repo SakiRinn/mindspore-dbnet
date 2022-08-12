@@ -62,19 +62,21 @@ class DataLoader():
         self.config = config
         self.isTrain = isTrain
 
-        self.ra = RandomAugment()
-        self.ms = MakeSegDetectionData()
-        self.mb = MakeBorderMap()
+        self.ra = RandomAugment(**config['dataset']['random_crop'])
+        self.ms = MakeSegDetectionData(config['train']['min_text_size'],
+                                       config['train']['shrink_ratio'])
+        self.mb = MakeBorderMap(config['train']['shrink_ratio'],
+                                config['train']['thresh_min'], config['train']['thresh_max'])
 
         if isTrain:
-            img_paths = glob.glob(os.path.join(config['train']['train_img_dir'],
-                                               '*' + config['train']['train_img_format']))
+            img_paths = glob.glob(os.path.join(config['train']['img_dir'],
+                                               '*' + config['train']['img_format']))
         else:
-            img_paths = glob.glob(os.path.join(config['test']['test_img_dir'],
-                                               '*' + config['test']['test_img_format']))
+            img_paths = glob.glob(os.path.join(config['test']['img_dir'],
+                                               '*' + config['test']['img_format']))
 
         if self.isTrain:
-            img_dir = config['train']['train_gt_dir']
+            img_dir = config['train']['gt_dir']
             if (config['general']['is_icdar2015']):
                 gt_paths = [os.path.join(img_dir, img_path.split('/')[-1].split('.')[0] + '.jpg.txt')
                             for img_path in img_paths]
@@ -82,8 +84,8 @@ class DataLoader():
                 gt_paths = [os.path.join(img_dir, img_path.split('/')[-1].split('.')[0] + '.txt' )
                             for img_path in img_paths]
         else:
-            img_dir = config['test']['test_gt_dir']
-            if (config['general']['is_icdar2015']):
+            img_dir = config['test']['gt_dir']
+            if (config['dataset']['is_icdar2015']):
                 gt_paths = [os.path.join(img_dir, 'gt_' + img_path.split('/')[-1].split('.')[0] + '.txt')
                             for img_path in img_paths]
             else:
@@ -107,8 +109,8 @@ class DataLoader():
 
         # Random Augment
         if self.isTrain and self.config['train']['is_transform']:
-            img, polys = self.ra.random_scale(img, polys, 640)
-            img, polys = self.ra.random_rotate(img, polys, self.config['train']['random_angle'])
+            img, polys = self.ra.random_scale(img, polys, self.config['dataset']['min_size'])
+            img, polys = self.ra.random_rotate(img, polys, self.config['dataset']['random_angle'])
             img, polys = self.ra.random_flip(img, polys)
             img, polys, dontcare = self.ra.random_crop(img, polys, dontcare)
         else:
@@ -124,7 +126,7 @@ class DataLoader():
             dontcare = np.array(dontcare, dtype=np.bool8)
 
         # Show Images
-        if self.config['general']['is_show']:
+        if self.config['dataset']['is_show']:
             cv2.imwrite('./images/img.jpg', img)
             cv2.imwrite('./images/gt.jpg', gt[0]*255)
             cv2.imwrite('./images/gt_mask.jpg', gt_mask*255)
