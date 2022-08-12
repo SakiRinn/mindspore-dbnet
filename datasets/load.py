@@ -30,7 +30,7 @@ def get_bboxes(gt_path, config):
             dontcare.append(True)
         else:
             dontcare.append(False)
-        if config['general']['is_icdar2015']:
+        if config['dataset']['is_icdar2015']:
             box = [int(gt[i]) for i in range(8)]
         else:
             box = [int(gt[i]) for i in range(len(gt) - 1)]
@@ -77,7 +77,7 @@ class DataLoader():
 
         if self.isTrain:
             img_dir = config['train']['gt_dir']
-            if (config['general']['is_icdar2015']):
+            if (config['dataset']['is_icdar2015']):
                 gt_paths = [os.path.join(img_dir, img_path.split('/')[-1].split('.')[0] + '.jpg.txt')
                             for img_path in img_paths]
             else:
