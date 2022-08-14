@@ -175,10 +175,10 @@ class SegDetector(nn.Cell):
 
 class SegDetectorPP(SegDetector):
     def __init__(self, in_channels=[64, 128, 256, 512], inner_channels=256, k=10,
-                 bias=False, adaptive=True, smooth=False, serial=False, training=False,
-                 attention_type='scale_spatial'):
+                 bias=False, adaptive=True, serial=False, training=False,
+                 attention_type='scale_channel_spatial'):
         super(SegDetectorPP, self).__init__(in_channels, inner_channels, k,
-                                            bias, adaptive, smooth, serial, training)
+                                            bias, adaptive, serial, training)
         self.concat_attention = ScaleFeatureSelection(inner_channels, inner_channels//4,
                                                       attention_type=attention_type)
         self.concat_attention.weights_init(self.concat_attention)
