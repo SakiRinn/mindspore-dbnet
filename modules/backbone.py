@@ -263,10 +263,10 @@ def resnet50(pretrained=True, **kwargs):
     Args:
         pretrained (bool): If True, returns a model pre-trained on ImageNet
     """
-    ms_dict = load_checkpoint("")
     model = ResNet(Bottleneck, [3, 4, 6, 3], **kwargs)
 
     if pretrained:
+        ms_dict = load_checkpoint("")
         param_not_load = load_param_into_net(model, ms_dict)
 
     return model
@@ -277,10 +277,10 @@ def deformable_resnet50(pretrained=True, **kwargs):
     Args:
         pretrained (bool): If True, returns a model pre-trained on ImageNet
     """
-    ms_dict = load_checkpoint("")
     model = ResNet(Bottleneck, [3, 4, 6, 3], dcn=dict(deformable_groups=1), **kwargs)
 
     if pretrained:
+        ms_dict = load_checkpoint("")
         param_not_load = load_param_into_net(model, ms_dict)
 
     return model
