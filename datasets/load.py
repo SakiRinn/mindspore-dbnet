@@ -56,6 +56,7 @@ def resize(img, polys=None, denominator=32, isTrain=True):
         polys[:, :, 1] = polys[:, :, 1] * h_scale
     return img, polys
 
+
 class DataLoader():
     def __init__(self, config, isTrain=True):
         self.RGB_MEAN = np.array([122.67891434, 116.66876762, 104.00698793])
@@ -109,7 +110,7 @@ class DataLoader():
 
         # Random Augment
         if self.isTrain and self.config['train']['is_transform']:
-            img, polys = self.ra.random_scale(img, polys, self.config['dataset']['min_size'])
+            img, polys = self.ra.random_scale(img, polys, self.config['dataset']['short_side'])
             img, polys = self.ra.random_rotate(img, polys, self.config['dataset']['random_angle'])
             img, polys = self.ra.random_flip(img, polys)
             img, polys, dontcare = self.ra.random_crop(img, polys, dontcare)

@@ -197,7 +197,7 @@ class RandomAugment:
             new_polys.append(poly)
         return img, new_polys
 
-    def random_scale(self, img, polys, min_size):
+    def random_scale(self, img, polys, short_side):
         polys, max_points = solve_polys(polys)
         h, w = img.shape[0:2]
 
@@ -218,9 +218,9 @@ class RandomAugment:
         # Get scale randomly.
         random_scale = np.array([0.5, 1.0, 2.0, 3.0])
         scale = np.random.choice(random_scale)
-        # If less than min_size, scale will be clipped to min_scale.
-        if min(h, w) * scale <= min_size:
-            scale = (min_size + 10) * 1.0 / min(h, w)
+        # If less than short_side, scale will be clipped to min_scale.
+        if min(h, w) * scale <= short_side:
+            scale = (short_side + 10) * 1.0 / min(h, w)
         # Rescale img.
         img = cv2.resize(img, dsize=None, fx=scale, fy=scale)
         # Rescale polys: (N, 8) -> (N, 4, 2)
