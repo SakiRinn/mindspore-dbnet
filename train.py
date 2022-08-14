@@ -6,11 +6,12 @@ import mindspore.dataset as ds
 import mindspore.nn as nn
 from mindspore.train.callback import LearningRateScheduler, CheckpointConfig, ModelCheckpoint, LossMonitor
 from mindspore.train.model import Model
-from mindspore import context, load_checkpoint
+from mindspore import context
 
 from datasets.load import DataLoader
 import modules.loss as loss
-from modules.model import DBnet, DBnetPP, WithLossCell, StopCallBack
+from modules.model import DBnet, DBnetPP, WithLossCell
+from modules.callback import LrScheduler, StepMonitor
 
 
 def learning_rate_function(lr, cur_epoch_num):
@@ -22,8 +23,9 @@ def learning_rate_function(lr, cur_epoch_num):
     lr = config['optimizer']['lr']['value']
     factor = config['optimizer']['lr']['factor']
 
-    rate = np.power(1.0 - cur_epoch_num / float(epochs + 1), factor)
-    return rate * lr
+    rate = (1.0 - cur_epoch_num / (epochs + 1))**factor
+    lr = rate * lr
+    return lr
 
 
 def train(path=None):
@@ -34,7 +36,8 @@ def train(path=None):
 
     ## Dataset
     data_loader = DataLoader(config, isTrain=True)
-    train_dataset = ds.GeneratorDataset(data_loader, ['img', 'gts', 'gt_masks', 'thresh_maps', 'thresh_masks'],
+    train_dataset = ds.GeneratorDataset(data_loader,
+                                        ['img', 'gts', 'gt_masks', 'thresh_maps', 'thresh_masks'],
                                         num_parallel_workers=config['dataset']['num_workers'])
     train_dataset = train_dataset.batch(config['train']['batch_size'])
 
@@ -59,10 +62,11 @@ def train(path=None):
     ckpoint = ModelCheckpoint(prefix=(config['net']),
                               directory=config['train']['output_dir'],
                               config=config_ck)
+    logfile = config['train']['output_dir'] + config['train']['log_filename'] + '.log'
     model.train(config['train']['epochs'], train_dataset, dataset_sink_mode=False,
-                callbacks=[LossMonitor(), LearningRateScheduler(learning_rate_function), ckpoint])
+                callbacks=[StepMonitor(logfile), LrScheduler(learning_rate_function), ckpoint])
 
-    #need to stop at a certain time
+    # Need to stop at a certain time
     # config_ck = CheckpointConfig(keep_checkpoint_max=10)
     # ckpoint = ModelCheckpoint(prefix="DBnet", directory="./checkpoints/DBnetPP/", config=config_ck)
     # stop = StopCallBack(stop_epoch=2, stop_step=230)
@@ -71,6 +75,6 @@ def train(path=None):
 
 
 if __name__ == '__main__':
-    context.set_context(mode=context.GRAPH_MODE, device_target="Ascend", device_id=2)
-    train(path = 'checkpoints/pthTOckpt/pretrained_RN18_ckpoint.ckpt')
+    context.set_context(mode=context.GRAPH_MODE, device_target="Ascend", device_id=5)
+    train()
     print("Train has completed.")

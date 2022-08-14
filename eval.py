@@ -106,5 +106,5 @@ def evaluate(path: str):
 
 
 if __name__ == '__main__':
-    context.set_context(mode=context.PYNATIVE_MODE, device_target="Ascend", device_id=6)
-    evaluate('./checkpoints/DBnet/DBnet_2-29_27.ckpt')
+    context.set_context(mode=context.PYNATIVE_MODE, device_target="Ascend", device_id=4)
+    evaluate('checkpoints/DBnet/DBnet_6-29_26.ckpt')
