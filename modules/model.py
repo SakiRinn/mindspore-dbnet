@@ -1,5 +1,6 @@
 import mindspore.nn as nn
 import modules.detector as detector
+import modules.backbone as backbone
 
 
 class DBnet(nn.Cell):
