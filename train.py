@@ -4,14 +4,14 @@ import numpy as np
 import mindspore
 import mindspore.dataset as ds
 import mindspore.nn as nn
-from mindspore.train.callback import CheckpointConfig, ModelCheckpoint
 from mindspore.train.model import Model
 from mindspore import context
+from mindspore.train.callback import CheckpointConfig, ModelCheckpoint
 
 from datasets.load import DataLoader
 import modules.loss as loss
 from modules.model import DBnet, DBnetPP, WithLossCell
-from utils.callback import LrScheduler, StepMonitor
+from utils.callback import CkptSaver, LrScheduler, StepMonitor
 
 
 def learning_rate_function(lr, cur_epoch_num):
@@ -54,15 +54,20 @@ def train(path=None):
     ## Resume
     if path is not None:
         model_dict = mindspore.load_checkpoint(path)
-        print("pretrained weight loaded")
+        print("Pretrained weight has been loaded.")
         mindspore.load_param_into_net(net, model_dict)
 
     ## Train
     config_ck = CheckpointConfig(save_checkpoint_steps=config['train']['save_steps'],
                                  keep_checkpoint_max=config['train']['max_checkpoints'])
-    ckpoint = ModelCheckpoint(prefix=(config['net']),
-                              directory=config['train']['output_dir'],
-                              config=config_ck)
+    if config['train']['is_eval_before_saving']:
+        ckpoint = CkptSaver(config, prefix=(config['net']),
+                            directory=config['train']['output_dir'],
+                            config=config_ck)
+    else:
+        ckpoint = ModelCheckpoint(prefix=(config['net']),
+                                  directory=config['train']['output_dir'],
+                                  config=config_ck)
     logfile = config['train']['output_dir'] + config['train']['log_filename'] + '.log'
     model.train(config['train']['epochs'], train_dataset, dataset_sink_mode=False,
                 callbacks=[StepMonitor(logfile), LrScheduler(learning_rate_function), ckpoint])

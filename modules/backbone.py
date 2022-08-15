@@ -4,6 +4,8 @@ from mindspore import load_checkpoint, load_param_into_net
 from mindspore.common.initializer import HeNormal
 
 import math
+import sys
+sys.path.insert(0, '.')
 from utils.dcn import DeformConv2d
 
 # set initializer to constant for debugging.

@@ -1,13 +1,17 @@
+import os
 import math
 import time
 import numpy as np
+from utils.metric import AverageMeter
+from eval import evaluate
 
 from mindspore import log as logger
 from mindspore.ops import functional as F
 from mindspore import Tensor
 from mindspore import dtype as mstype
 from mindspore.train.callback import Callback
-from utils.metric import AverageMeter
+from mindspore.train.callback import ModelCheckpoint
+from mindspore.train.serialization import save_checkpoint
 
 
 class StopCallBack(Callback):
@@ -80,7 +84,7 @@ class StepMonitor(Callback):
                 cb_params.cur_epoch_num, cur_step_in_epoch))
         if self._per_print_times != 0 and (cb_params.cur_step_num - self._last_print_time) >= self._per_print_times:
             self._last_print_time = cb_params.cur_step_num
-            loss_log = "[%s] epoch: %d step: %2d lr: %.15f, loss is %.6f" % \
+            loss_log = "[%s] epoch: %d step: %2d lr: %.6f, loss is %.6f" % \
                        (time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(time.time())),
                        cb_params.cur_epoch_num, cur_step_in_epoch, cur_lr, np.mean(self.loss_avg.avg))
             print(loss_log, flush=True)
@@ -136,3 +140,42 @@ class LrScheduler(Callback):
         if not math.isclose(lr, new_lr, rel_tol=1e-10):
             F.assign(cb_params.optimizer.learning_rate, Tensor(new_lr, mstype.float32))
             logger.info(f'At step {cb_params.cur_epoch_num}, learning_rate change to {new_lr}')
+
+
+class CkptSaver(ModelCheckpoint):
+
+    def __init__(self, yaml_config, prefix='CKP', directory=None, config=None):
+        super().__init__(prefix, directory, config)
+        self.yaml_config = yaml_config
+        self.max_fmeasure = 0.0
+
+
+    def step_end(self, run_context):
+        super().step_end(run_context)
+        cb_params = run_context.original_args()
+        logfile = self.yaml_config['train']['output_dir'] + \
+                  self.yaml_config['train']['log_filename'] + '.log'
+
+        if self._latest_ckpt_file_name == "":
+            return
+        metrics = evaluate(self.yaml_config, self._latest_ckpt_file_name)
+        with open(logfile, "a+") as f:
+                print('Saving... Current performance:', flush=True)
+                print(f'Current Fmeasure: {metrics["fmeasure"].avg}')
+                f.write('Saving... Current performance:\n')
+                f.write(f"Recall: {metrics['recall'].avg}, ")
+                f.write(f"Precision: {metrics['precision'].avg}, ")
+                f.write(f"Fmeasure: {metrics['fmeasure'].avg}")
+                f.write('\n')
+
+        if metrics['fmeasure'].avg > self.max_fmeasure:
+            with open(logfile, "a+") as f:
+                print('Best performance has been refreshed!')
+                f.write('Best performance has been refreshed!\n')
+            self.max_fmeasure = metrics['fmeasure'].avg
+            network = self._config.saved_network if self._config.saved_network is not None \
+                      else cb_params.train_network
+            cur_file = os.path.join(self._directory, 'CurrentBest.ckpt')
+            save_checkpoint(network, cur_file,
+                            self._config.integrated_save, self._config.async_save,
+                            self._append_dict, self._config.enc_key, self._config.enc_mode)

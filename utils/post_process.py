@@ -29,7 +29,12 @@ class SegDetectorRepresenter:
             thresh: [if exists] thresh hold prediction with shape (N, H, W)
             thresh_binary: [if exists] binarized with threshhold, (N, H, W)
         '''
-        pred = pred[self.dest][:, 0, :, :]
+        if isinstance(pred, dict):
+            pred = pred[self.dest][:, 0, :, :]
+        else:
+            dest_dict = {'binary': 0, 'thresh': 1, 'thresh_binary': 2}
+            idx = dest_dict[self.dest]
+            pred = pred[idx][:, 0, :, :]
         segmentation = ops.cast(self.binarize(pred), mstype.float16)
         boxes_batch = []
         scores_batch = []

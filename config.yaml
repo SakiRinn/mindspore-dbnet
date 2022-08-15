@@ -32,13 +32,14 @@ train:
     img_format: '.jpg'
     img_dir: "./data/train_images/"
     gt_dir: "./data/train_gts/"
-    output_dir: "./checkpoints/DBnet/"
-    log_filename: DBnet
+    output_dir: "./checkpoints/finetune/"
+    log_filename: finetune
     epochs: 1200
-    batch_size: 12
-    save_steps: 840
+    batch_size: 16
+    save_steps: 630
     max_checkpoints: 10
     is_transform: True
+    is_eval_before_saving: True
     shrink_ratio: 0.4
     min_text_size: 8
     thresh_min: 0.3

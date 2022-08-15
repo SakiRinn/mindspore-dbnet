@@ -6,6 +6,8 @@ from mindspore.common.initializer import HeNormal
 from mindspore.common import initializer as init
 
 import numpy as np
+import sys
+sys.path.insert(0, '.')
 from utils.asf import ScaleFeatureSelection
 
 

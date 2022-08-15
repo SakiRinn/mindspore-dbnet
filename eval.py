@@ -6,9 +6,8 @@ import cv2
 from tqdm.auto import tqdm
 
 import mindspore
-from mindspore import Tensor, context
+from mindspore import context
 import mindspore.dataset as ds
-import mindspore.nn as nn
 
 import sys
 sys.path.insert(0, '.')
@@ -18,9 +17,9 @@ from utils.post_process import SegDetectorRepresenter
 from modules.model import DBnet, DBnetPP
 
 
-class WithEvalCell(nn.Cell):
+class WithEvalCell:
     def __init__(self, model, config):
-        super(WithEvalCell, self).__init__(auto_prefix=False)
+        super(WithEvalCell, self).__init__()
         self.model = model
         self.config = config
         self.metric = QuadMetric(config['eval']['polygon'])
@@ -30,7 +29,7 @@ class WithEvalCell(nn.Cell):
                                                    config['eval']['polygon'],
                                                    config['eval']['dest'])
 
-    def construct(self, batch):
+    def once_eval(self, batch):
         start = time.time()
 
         preds = self.model(batch['img'])
@@ -49,7 +48,7 @@ class WithEvalCell(nn.Cell):
         count = 0
 
         for batch in tqdm(dataset):
-            raw_metric, (cur_frame, cur_time) = self(batch)
+            raw_metric, (cur_frame, cur_time) = self.once_eval(batch)
             raw_metrics.append(raw_metric)
 
             print('\n', raw_metric['evaluationLog'], end='')
@@ -80,14 +79,13 @@ class WithEvalCell(nn.Cell):
 
         metrics = self.metric.gather_measure(raw_metrics)
         print(f'FPS: {total_frame / total_time}')
-        print(metrics['recall'].avg, metrics['precision'].avg, metrics['fmeasure'].avg)
+        print('Recall:', f"{metrics['recall'].avg},",
+              'Precision:', f"{metrics['precision'].avg},",
+              'Fmeasure:', f"{metrics['fmeasure'].avg},")
+        return metrics
 
-def evaluate(path: str):
-    ## Config
-    stream = open('config.yaml', 'r', encoding='utf-8')
-    config = yaml.load(stream, Loader=yaml.FullLoader)
-    stream.close()
 
+def evaluate(config, path):
     ## Dataset
     data_loader = DataLoader(config, isTrain=False)
     val_dataset = ds.GeneratorDataset(data_loader, ['original', 'img', 'polys', 'dontcare'])
@@ -101,10 +99,16 @@ def evaluate(path: str):
 
     ## Eval
     eval_net = WithEvalCell(net, config)
-    eval_net.set_train(False)
-    eval_net.eval(dataset, show_imgs=config['eval']['show_images'])
+    # eval_net.set_train(False)
+    metrics = eval_net.eval(dataset, show_imgs=config['eval']['show_images'])
+
+    return metrics
 
 
 if __name__ == '__main__':
-    context.set_context(mode=context.PYNATIVE_MODE, device_target="Ascend", device_id=7)
-    evaluate('./checkpoints/1.ckpt')
+    stream = open('config.yaml', 'r', encoding='utf-8')
+    config = yaml.load(stream, Loader=yaml.FullLoader)
+    stream.close()
+
+    context.set_context(mode=context.GRAPH_MODE, device_target="Ascend", device_id=7)
+    evaluate(config, './checkpoints/pthTOckpt/LiaoResnet18_final_TOckpt.ckpt')
