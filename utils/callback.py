@@ -152,11 +152,11 @@ class CkptSaver(ModelCheckpoint):
 
     def step_end(self, run_context):
         super().step_end(run_context)
-        self.eval_before_saving(run_context)
-
-    def eval_before_saving(self, run_context):
         cb_params = run_context.original_args()
-        if cb_params.cur_step_num == self._last_triggered_step:
+        self.eval_before_saving(cb_params)
+
+    def eval_before_saving(self, cb_params):
+        if cb_params.cur_step_num % self.yaml_config['train']['save_steps'] != 0:
             return
         logfile = self.yaml_config['train']['output_dir'] + \
                   self.yaml_config['train']['log_filename'] + '.log'
