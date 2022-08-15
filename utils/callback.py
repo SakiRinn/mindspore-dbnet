@@ -88,9 +88,9 @@ class StepMonitor(Callback):
                        (time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(time.time())),
                        cb_params.cur_epoch_num, cur_step_in_epoch, cur_lr, np.mean(self.loss_avg.avg))
             print(loss_log, flush=True)
-            with open(self.logname, "a+") as loss_file:
-                loss_file.write(loss_log)
-                loss_file.write("\n")
+            with open(self.logname, "a+") as f:
+                f.write(loss_log)
+                f.write("\n")
 
 
 class LrScheduler(Callback):
