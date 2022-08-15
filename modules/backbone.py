@@ -1,17 +1,10 @@
-import sys
-sys.path.insert(0, './')
-from utils.dcn import DeformConv2d
-
-import mindspore as ms
-from mindspore import ops, Tensor
-from mindspore import context
 import mindspore.nn as nn
 from mindspore.common.initializer import Normal
 from mindspore import load_checkpoint, load_param_into_net
 from mindspore.common.initializer import HeNormal
-import numpy as np
-import math
 
+import math
+from utils.dcn import DeformConv2d
 
 # set initializer to constant for debugging.
 def conv3x3(inplanes, outplanes, stride=1):

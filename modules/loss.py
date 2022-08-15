@@ -1,11 +1,6 @@
-import sys
-import time
-from turtle import end_fill
 import numpy as np
-
-from mindspore import Tensor, context, nn, ops
+from mindspore import Tensor, nn, ops
 import mindspore as ms
-from mindspore import Tensor, nn, ops, context
 
 # Input:
 #             pred: A dict which contains predictions.

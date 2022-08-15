@@ -1,5 +1,3 @@
-import numpy as np
-
 import mindspore as ms
 from mindspore import ops, Tensor
 from mindspore import context
@@ -7,8 +5,7 @@ import mindspore.nn as nn
 from mindspore.common.initializer import HeNormal
 from mindspore.common import initializer as init
 
-import sys
-sys.path.insert(0, '.')
+import numpy as np
 from utils.asf import ScaleFeatureSelection
 
 

@@ -4,14 +4,14 @@ import numpy as np
 import mindspore
 import mindspore.dataset as ds
 import mindspore.nn as nn
-from mindspore.train.callback import LearningRateScheduler, CheckpointConfig, ModelCheckpoint, LossMonitor
+from mindspore.train.callback import CheckpointConfig, ModelCheckpoint
 from mindspore.train.model import Model
 from mindspore import context
 
 from datasets.load import DataLoader
 import modules.loss as loss
 from modules.model import DBnet, DBnetPP, WithLossCell
-from modules.callback import LrScheduler, StepMonitor
+from utils.callback import LrScheduler, StepMonitor
 
 
 def learning_rate_function(lr, cur_epoch_num):
@@ -54,6 +54,7 @@ def train(path=None):
     ## Resume
     if path is not None:
         model_dict = mindspore.load_checkpoint(path)
+        print("pretrained weight loaded")
         mindspore.load_param_into_net(net, model_dict)
 
     ## Train
@@ -75,6 +76,6 @@ def train(path=None):
 
 
 if __name__ == '__main__':
-    context.set_context(mode=context.GRAPH_MODE, device_target="Ascend", device_id=5)
-    train()
+    context.set_context(mode=context.GRAPH_MODE, device_target="Ascend", device_id=4)
+    train("checkpoints/pthTOckpt/pretrained_Finetune_ckpoint.ckpt")
     print("Train has completed.")
