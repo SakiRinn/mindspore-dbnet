@@ -1,9 +1,9 @@
 net: DBnet
 backbone:
-    initializer: deformable_resnet50
+    initializer: resnet18
     pretrained: False
 segdetector:
-    in_channels: [256, 512, 1024, 2048]
+    in_channels: [64, 128, 256, 512]
     inner_channels: 256
     k: 50
     bias: False
@@ -32,8 +32,8 @@ train:
     img_format: '.jpg'
     img_dir: "./data/train_images/"
     gt_dir: "./data/train_gts/"
-    output_dir: "./checkpoints/DBnet50/"
-    log_filename: DBnet50
+    output_dir: "./checkpoints/DBnet/"
+    log_filename: DBnet
     epochs: 1200
     batch_size: 12
     save_steps: 840
@@ -45,9 +45,10 @@ train:
     thresh_max: 0.7
 eval:
     img_format: '.jpg'
-    img_dir: "./data/test_images"
-    gt_dir: "./data/test_gts"
-    output_dir: './outputs_test'
+    img_dir: "./data/test_images/"
+    gt_dir: "./data/test_gts/"
+    show_images: True
+    image_dir: './outputs_test/'
     thresh: 0.3
     box_thresh: 0.55
     max_candidates: 1000

@@ -74,9 +74,9 @@ class WithEvalCell(nn.Cell):
                         cv2.polylines(img, [poly], True, (200, 255, 200), 4)
                     else:
                         cv2.polylines(img, [poly], True, (0, 255, 0), 4)
-                if not os.path.exists('images'):
-                    os.makedirs('images')
-                cv2.imwrite(f'images/eval_{count}.jpg', img)
+                if not os.path.exists(self.config['eval']['image_dir']):
+                    os.makedirs(self.config['eval']['image_dir'])
+                cv2.imwrite(self.config['eval']['image_dir'] + f'eval_{count}.jpg', img)
 
         metrics = self.metric.gather_measure(raw_metrics)
         print(f'FPS: {total_frame / total_time}')
@@ -102,9 +102,9 @@ def evaluate(path: str):
     ## Eval
     eval_net = WithEvalCell(net, config)
     eval_net.set_train(False)
-    eval_net.eval(dataset)
+    eval_net.eval(dataset, show_imgs=config['eval']['show_images'])
 
 
 if __name__ == '__main__':
-    context.set_context(mode=context.PYNATIVE_MODE, device_target="Ascend", device_id=4)
-    evaluate('checkpoints/DBnet/DBnet_6-29_26.ckpt')
+    context.set_context(mode=context.PYNATIVE_MODE, device_target="Ascend", device_id=7)
+    evaluate('./checkpoints/1.ckpt')
