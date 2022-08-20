@@ -81,7 +81,7 @@ class WithEvalCell:
         print(f'FPS: {total_frame / total_time}')
         print('Recall:', f"{metrics['recall'].avg},",
               'Precision:', f"{metrics['precision'].avg},",
-              'Fmeasure:', f"{metrics['fmeasure'].avg},")
+              'Fmeasure:', f"{metrics['fmeasure'].avg}")
         return metrics
 
 
@@ -111,4 +111,4 @@ if __name__ == '__main__':
     stream.close()
 
     context.set_context(mode=context.GRAPH_MODE, device_target="Ascend", device_id=7)
-    evaluate(config, './checkpoints/pthTOckpt/LiaoResnet18_final_TOckpt.ckpt')
+    evaluate(config, 'checkpoints/finetune/CurrentBest.ckpt')

@@ -14,16 +14,13 @@ from modules.model import DBnet, DBnetPP, WithLossCell
 from utils.callback import CkptSaver, LrScheduler, StepMonitor
 
 
-def learning_rate_function(lr, cur_epoch_num):
-    stream = open('config.yaml', 'r', encoding='utf-8')
-    config = yaml.load(stream, Loader=yaml.FullLoader)
-    stream.close()
-
-    epochs = config['train']['epochs']
+def learning_rate_function(lr, cur_epoch_num, config):
+    total_epochs = config['train']['total_epochs']
+    start_epoch_num = config['train']['start_epoch_num']
     lr = config['optimizer']['lr']['value']
     factor = config['optimizer']['lr']['factor']
 
-    rate = (1.0 - cur_epoch_num / (epochs + 1))**factor
+    rate = (1.0 - (start_epoch_num + cur_epoch_num) / (start_epoch_num + total_epochs + 1))**factor
     lr = rate * lr
     return lr
 
@@ -69,8 +66,8 @@ def train(path=None):
                                   directory=config['train']['output_dir'],
                                   config=config_ck)
     logfile = config['train']['output_dir'] + config['train']['log_filename'] + '.log'
-    model.train(config['train']['epochs'], train_dataset, dataset_sink_mode=False,
-                callbacks=[StepMonitor(logfile), LrScheduler(learning_rate_function), ckpoint])
+    model.train(config['train']['total_epochs'], train_dataset, dataset_sink_mode=False,
+                callbacks=[StepMonitor(logfile), LrScheduler(learning_rate_function, config), ckpoint])
 
     # Need to stop at a certain time
     # config_ck = CheckpointConfig(keep_checkpoint_max=10)
@@ -81,6 +78,6 @@ def train(path=None):
 
 
 if __name__ == '__main__':
-    context.set_context(mode=context.GRAPH_MODE, device_target="Ascend", device_id=4)
-    train("checkpoints/pthTOckpt/pretrained_Finetune_ckpoint.ckpt")
+    context.set_context(mode=context.GRAPH_MODE, device_target="Ascend", device_id=2)
+    train()
     print("Train has completed.")

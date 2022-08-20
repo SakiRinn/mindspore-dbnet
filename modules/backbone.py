@@ -2,6 +2,7 @@ import mindspore.nn as nn
 from mindspore.common.initializer import Normal
 from mindspore import load_checkpoint, load_param_into_net
 from mindspore.common.initializer import HeNormal
+from utils.test_pthTOckpt import mod_pretrained_resnet
 
 import math
 import sys
@@ -236,7 +237,8 @@ def resnet18(pretrained=True, **kwargs):
     model = ResNet(BasicBlock, [2, 2, 2, 2], **kwargs)
 
     if pretrained:
-        ms_dict = load_checkpoint("/opt/nvme1n1/wz/dbnet_torch/path-to-model-directory/res18_ms.ckpt")
+        ms_dict = load_checkpoint("tests/resnet18_weight.ckpt")
+        ms_dict = mod_pretrained_resnet(ms_dict)
         param_not_load = load_param_into_net(model, ms_dict)
 
     return model

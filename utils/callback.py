@@ -122,9 +122,10 @@ class LrScheduler(Callback):
         ...             dataset_sink_mode=False)
     """
 
-    def __init__(self, learning_rate_function):
+    def __init__(self, learning_rate_function, config):
         super(LrScheduler, self).__init__()
         self.learning_rate_function = learning_rate_function
+        self.config = config
 
     def step_end(self, run_context):
         """
@@ -136,7 +137,7 @@ class LrScheduler(Callback):
         cb_params = run_context.original_args()
         arr_lr = cb_params.optimizer.learning_rate.asnumpy()
         lr = float(np.array2string(arr_lr))
-        new_lr = self.learning_rate_function(lr, cb_params.cur_epoch_num)
+        new_lr = self.learning_rate_function(lr, cb_params.cur_epoch_num, self.config)
         if not math.isclose(lr, new_lr, rel_tol=1e-10):
             F.assign(cb_params.optimizer.learning_rate, Tensor(new_lr, mstype.float32))
             logger.info(f'At step {cb_params.cur_epoch_num}, learning_rate change to {new_lr}')

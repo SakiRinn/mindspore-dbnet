@@ -1,3 +1,6 @@
+import sys
+import time
+
 import numpy as np
 from mindspore import Tensor, nn, ops
 import mindspore as ms
@@ -34,8 +37,8 @@ class L1BalanceCELoss(nn.LossBase):
 
     def construct(self, pred, gt, gt_mask, thresh_map, thresh_mask):
 
-        # bce_loss_output = self.bce_loss(pred['binary'], gt, gt_mask)
-        bce_loss_output = 0
+        bce_loss_output = self.bce_loss(pred['binary'], gt, gt_mask)
+        # bce_loss_output = 0
 
         if 'thresh' in pred:
             l1_loss = self.l1_loss(pred['thresh'], thresh_map, thresh_mask)
@@ -135,15 +138,13 @@ class BalanceCrossEntropyLoss(nn.LossBase):
 
         negative_count = self.min(negative_count, positive_count * self.negative_ratio).astype(ms.int32)
 
-        # loss = self.bceloss(pred, gt)
-        loss = self.bceloss(pred, gt)[:, 0, :, :]
+        loss = self.bceloss(pred, gt)
+        # loss = self.bceloss(pred[:, 0, :, :], gt)
 
         positive_loss = (loss * pos)
         negative_loss = (loss * neg).view(-1) # (100,)
 
-        # negative_loss, _ = self.sort(negative_loss) # sort the losses in descending order.
-
-        negative_loss, _ = self.topk(negative_loss, len(negative_loss))
+        negative_loss, _ = self.sort(negative_loss) # sort the losses in descending order.
 
         min_neg_score = ops.gather(negative_loss, negative_count, 0) # minimum score of the topk loss
 
@@ -156,8 +157,40 @@ class BalanceCrossEntropyLoss(nn.LossBase):
         balance_loss = (positive_loss.sum() + masked_neg_loss.sum())/(positive_count + negative_count + self.eps)
 
         return balance_loss
-        # negative_loss, _ = self.topk(negative_loss, negative_count)
-        # negative_loss = negative_loss[:negative_count]
-        # balance_loss = (positive_loss.sum() + negative_loss.sum())/(positive_count + negative_count + self.eps)
 
-        # return balance_loss
+def test_bce():
+    pred = np.load("/old/wlh/DBnetpp_mindspore/test_np/pred.npy")
+    pred = Tensor(pred)
+    mask = np.load("/old/wlh/DBnetpp_mindspore/test_np/mask.npy")
+    mask = Tensor(mask)
+    gt = np.load("/old/wlh/DBnetpp_mindspore/test_np/gt.npy")
+    gt = Tensor(gt)
+
+    BCE = BalanceCrossEntropyLoss()
+
+    # print(pred.shape, mask.shape, gt.shape, pred.dtype, mask.dtype, gt.dtype)
+    # sys.exit()
+
+    SHAPE = 640
+
+    for _ in range(20):
+
+        pred_random = Tensor(np.random.rand(1,3,SHAPE,SHAPE), dtype=ms.float32)
+        gt_random = Tensor(np.random.rand(1,SHAPE,SHAPE), dtype=ms.float32)
+        mask_random = Tensor(np.random.rand(1,SHAPE,SHAPE), dtype=ms.float32)
+
+        start = time.time()
+        loss = BCE(pred_random, gt_random, mask_random)
+        end = time.time()
+
+        print("loss ",loss)
+        print("time ", end-start)
+
+
+if __name__ == '__main__':
+    from mindspore import context
+    context.set_context(mode=context.GRAPH_MODE, device_id=5)
+    test_bce()
+
+# update sort():
+# "/usr/local/Ascend/ascend-toolkit/5.0.4/arm64-linux/opp/op_impl/built-in/ai_core/tbe/impl/sort.py"
