@@ -164,11 +164,12 @@ class CkptSaver(ModelCheckpoint):
 
         if self._latest_ckpt_file_name == "":
             return
-        metrics = evaluate(self.yaml_config, self._latest_ckpt_file_name)
+        metrics, fps = evaluate(self.yaml_config, self._latest_ckpt_file_name)
         with open(logfile, "a+") as f:
                 print('Saving... Current performance:', flush=True)
                 print(f'Current Fmeasure: {metrics["fmeasure"].avg}')
                 f.write('Saving... Current performance:\n')
+                f.write(f'FPS: {fps}\n')
                 f.write(f"Recall: {metrics['recall'].avg}, ")
                 f.write(f"Precision: {metrics['precision'].avg}, ")
                 f.write(f"Fmeasure: {metrics['fmeasure'].avg}")

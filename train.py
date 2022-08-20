@@ -20,7 +20,7 @@ def learning_rate_function(lr, cur_epoch_num, config):
     lr = config['optimizer']['lr']['value']
     factor = config['optimizer']['lr']['factor']
 
-    rate = (1.0 - (start_epoch_num + cur_epoch_num) / (start_epoch_num + total_epochs + 1))**factor
+    rate = (1.0 - (start_epoch_num + cur_epoch_num) / (total_epochs + 1))**factor
     lr = rate * lr
     return lr
 
@@ -30,6 +30,9 @@ def train(path=None):
     stream = open('config.yaml', 'r', encoding='utf-8')
     config = yaml.load(stream, Loader=yaml.FullLoader)
     stream.close()
+    if config['train']['start_epoch_num'] >= config['train']['total_epochs']:
+        print('Training cancelled due to invalid config.')
+        return
 
     ## Dataset
     data_loader = DataLoader(config, isTrain=True)
@@ -66,7 +69,8 @@ def train(path=None):
                                   directory=config['train']['output_dir'],
                                   config=config_ck)
     logfile = config['train']['output_dir'] + config['train']['log_filename'] + '.log'
-    model.train(config['train']['total_epochs'], train_dataset, dataset_sink_mode=False,
+    model.train(config['train']['total_epochs'] - config['train']['start_epoch_num'],
+                train_dataset, dataset_sink_mode=False,
                 callbacks=[StepMonitor(logfile), LrScheduler(learning_rate_function, config), ckpoint])
 
     # Need to stop at a certain time
@@ -78,6 +82,6 @@ def train(path=None):
 
 
 if __name__ == '__main__':
-    context.set_context(mode=context.GRAPH_MODE, device_target="Ascend", device_id=2)
-    train()
+    context.set_context(mode=context.GRAPH_MODE, device_target="Ascend", device_id=3)
+    train('checkpoints/1E650.ckpt')
     print("Train has completed.")

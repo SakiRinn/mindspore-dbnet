@@ -78,11 +78,12 @@ class WithEvalCell:
                 cv2.imwrite(self.config['eval']['image_dir'] + f'eval_{count}.jpg', img)
 
         metrics = self.metric.gather_measure(raw_metrics)
-        print(f'FPS: {total_frame / total_time}')
+        fps = total_frame / total_time
+        print(f'FPS: {fps}')
         print('Recall:', f"{metrics['recall'].avg},",
               'Precision:', f"{metrics['precision'].avg},",
               'Fmeasure:', f"{metrics['fmeasure'].avg}")
-        return metrics
+        return metrics, fps
 
 
 def evaluate(config, path):
