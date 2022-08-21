@@ -198,8 +198,8 @@ class SegDetectorPP(SegDetector):
 
         # 进行上采样，准备进行连接操作
         up5 = ops.ResizeNearestNeighbor((in4.shape[2], in4.shape[3]))
-        up4 = ops.ResizeNearestNeighbor((in4.shape[2], in4.shape[3]))
-        up3 = ops.ResizeNearestNeighbor((in4.shape[2], in4.shape[3]))
+        up4 = ops.ResizeNearestNeighbor((in3.shape[2], in3.shape[3]))
+        up3 = ops.ResizeNearestNeighbor((in2.shape[2], in2.shape[3]))
 
         out4 = up5(in5) + in4  # 1/16
         out3 = up4(out4) + in3  # 1/8
