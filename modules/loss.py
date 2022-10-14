@@ -30,7 +30,7 @@ class L1BalanceCELoss(nn.LossBase):
 
         self.dice_loss = DiceLoss(eps=eps)
         self.l1_loss = MaskL1Loss()
-        
+
         if bce_replace == "bceloss":
             self.bce_loss = BalanceCrossEntropyLoss()
         elif bce_replace == "focalloss":
@@ -42,7 +42,7 @@ class L1BalanceCELoss(nn.LossBase):
         self.bce_scale = bce_scale
 
     def construct(self, pred, gt, gt_mask, thresh_map, thresh_mask):
-        bce_loss_output = self.bce_loss(pred['binary'], gt, gt_mask)   
+        bce_loss_output = self.bce_loss(pred['binary'], gt, gt_mask)
 
         if 'thresh' in pred:
             l1_loss = self.l1_loss(pred['thresh'], thresh_map, thresh_mask)
@@ -55,19 +55,19 @@ class L1BalanceCELoss(nn.LossBase):
 
 
 class myFocalLoss(nn.LossBase):
-    
+
     def __init__(self):
         super(myFocalLoss,self).__init__()
         self.Focalloss = nn.FocalLoss()
-        
+
     def construct(self, pred, gt, mask):
-        
+
         pred = pred * mask
         gt = gt * mask
         loss = self.Focalloss(pred, gt)
         return loss
-        
-        
+
+
 
 class DiceLoss(nn.LossBase):
 
@@ -206,12 +206,12 @@ def compare_loss():
     gt_random = Tensor(np.random.rand(1,SHAPE,SHAPE), dtype=ms.float32)
     np.random.seed(3)
     mask_random = Tensor(np.random.rand(1,SHAPE,SHAPE), dtype=ms.float32)
-    
-    
+
+
     # focal = myFocalLoss()
     # loss = focal(pred_random, gt_random, mask_random)
     # print("focalloss:{}".format(loss))
-    
+
     dice = DiceLoss()
     loss1 = dice(pred_random, gt_random, mask_random)
     print("diceloss:{}".format(loss1))
@@ -219,9 +219,9 @@ def compare_loss():
     maskl1 = MaskL1Loss()
     loss2 = maskl1(pred_random, gt_random, mask_random)
     print(f"maskl1loss:{loss2}")
-    
-    
-    
+
+
+
 
 if __name__ == '__main__':
     from mindspore import context

@@ -392,5 +392,3 @@ if __name__ == '__main__':
     ms.set_context(mode=ms.PYNATIVE_MODE, device_target="Ascend", device_id=5)
 
     test_R18dcn()
-
-

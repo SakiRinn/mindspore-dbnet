@@ -153,7 +153,3 @@ eval.py
 logs
 images
 tests
-*.ckpt
-*.txt
-*.mindir
-profiler_data*

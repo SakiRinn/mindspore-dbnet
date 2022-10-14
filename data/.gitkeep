@@ -1,0 +1,7 @@
+ICDAR2015
+
+└─ data
+    ├─ train_images
+    ├─ train_gts
+    ├─ test_images
+    ├─ test_gts
