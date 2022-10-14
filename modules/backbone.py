@@ -7,12 +7,6 @@ from mindspore.common.initializer import HeNormal
 import math
 import sys
 
-sys.path.insert(0, '.')
-from utils.test_pthTOckpt import mod_pretrained_resnet
-
-
-# from utils.dcn import DeformConv2d
-
 # set initializer to constant for debugging.
 def conv3x3(inplanes, outplanes, stride=1):
     """3x3 convolution with padding"""
@@ -292,7 +286,6 @@ def resnet18(pretrained=True, **kwargs):
 
     if pretrained:
         # ms_dict = load_checkpoint("checkpoints/imagenet_PretrainedCkpt/resnet18_Weight.ckpt")
-        # ms_dict = mod_pretrained_resnet(ms_dict)
         ms_dict = load_checkpoint("/old/zhaoting/resnet18-5c106cde.ckpt")
         param_not_load = load_param_into_net(model, ms_dict)
         print(param_not_load)

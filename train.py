@@ -12,7 +12,9 @@ from mindspore.communication.management import init, get_rank, get_group_size
 from datasets.load import DataLoader
 import modules.loss as loss
 from modules.model import DBnet, DBnetPP, WithLossCell
-from utils.callback import DBNetMonitor
+from utils.callback import LrScheduler, StepMonitor, CkptSaver
+from mindspore.train.callback import CheckpointConfig, ModelCheckpoint
+
 
 def learning_rate_function(cur_epoch_num, config):
     total_epochs = config['train']['total_epochs']
@@ -103,6 +105,18 @@ def train():
                                         shuffle=True, max_rowsize=32)
     train_dataset = train_dataset.batch(config['train']['batch_size'], drop_remainder=True)
 
+    ## Setup
+    config_ck = CheckpointConfig(save_checkpoint_steps=config['train']['save_steps'],
+                                 keep_checkpoint_max=config['train']['max_checkpoints'])
+    if config['train']['is_eval_before_saving']:
+        ckpoint = CkptSaver(config, prefix=(config['net']),
+                            directory=config['train']['output_dir'],
+                            config=config_ck)
+    else:
+        ckpoint = ModelCheckpoint(prefix=(config['net']),
+                                  directory=config['train']['output_dir'],
+                                  config=config_ck)
+    logfile = config['train']['output_dir'] + config['train']['log_filename'] + '.log'
 
     ## Model & Loss & Optimizer
     net = eval(config['net'])(config, isTrain=True)
@@ -116,7 +130,7 @@ def train():
                                                  scale_sense=nn.FixedLossScaleUpdateCell(1024.))
     model = ms.Model(train_net)
     model.train(config['train']['total_epochs'], train_dataset,
-                callbacks=[DBNetMonitor(config, train_net=train_net, lr_func=learning_rate_function)])
+                callbacks=[StepMonitor(logfile), LrScheduler(learning_rate_function, config), ckpoint])
 
 if __name__ == '__main__':
     train()
