@@ -1,0 +1,60 @@
+net: DBnet
+backbone:
+    initializer: resnet18
+    pretrained: True
+segdetector:
+    in_channels: [64, 128, 256, 512]  #R50: [256, 512, 1024, 2048]  R18: [64, 128, 256, 512]
+    inner_channels: 256
+    k: 50
+    bias: False
+    adaptive: True
+    serial: False
+loss:
+    eps: 0.000001
+    l1_scale: 10
+    bce_scale: 1  # focal:0.5  dice:1.6  bceloss:1
+    bce_replace: diceloss # diceloss / focalloss / bceloss
+optimizer:
+    lr:
+        value: 0.007
+        factor: 0.9
+    momentum: 0.9
+    weight_decay: 0.0001
+dataset:
+    is_show: False
+    is_icdar2015: True
+    num_workers: 4
+    short_side: 736
+    random_angle: [-10, 10]
+    random_crop:
+        max_tries: 100
+        min_crop_side_ratio: 0.1
+train:
+    img_format: '.jpg'
+    img_dir: "./data/train_images/"
+    gt_dir: "./data/train_gts/"
+    output_dir: "./checkpoints/10_13_r18_zt/"
+    log_filename: train
+    start_epoch_num: 0
+    total_epochs: 1200
+    batch_size: 16
+    save_steps: 630
+    max_checkpoints: 5
+    is_transform: True
+    is_eval_before_saving: True
+    shrink_ratio: 0.4
+    min_text_size: 8
+    thresh_min: 0.3
+    thresh_max: 0.7
+eval:
+    img_format: '.jpg'
+    img_dir: "./data/test_images/"
+    gt_dir: "./data/test_gts/"
+    show_images: False
+    image_dir: './outputs_test/'
+    thresh: 0.3
+    box_thresh: 0.55
+    max_candidates: 1000
+    unclip_ratio: 1.5
+    polygon: False
+    dest: binary
